@@ -1,0 +1,11 @@
+-*- mode:org; -*-
+
+* nuggets
+
+Tiny nuggets of Clojure code, plundered or coded for personal pleasure.
+
+** License
+
+Copyright © 2012 Vedang Manerikar
+
+Distributed under the Eclipse Public License, the same as Clojure.
