@@ -34,13 +34,6 @@
    (empty? ll) '()
    :else (conj (firsts (rest ll)) (first (first ll)))))
 
-;;; In idiomatic clojure
-
-(defn firsts
-  "Return the first element of each list in the list of lists `ll`"
-  [ll]
-  (map first ll))
-
 
 ;;; The Third Commandment
 ;;; =====================

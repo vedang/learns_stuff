@@ -21,13 +21,6 @@
    (atom? (first l)) (lat? (rest l))
    :else false))
 
-;;; And now in idiomatic clojure
-
-(defn lat?
-  "Return true if `l` is a list of atoms"
-  [l]
-  (every? atom? l))
-
 
 ;;; 4. or -> or
 
@@ -39,13 +32,6 @@
    (empty? lat) false
    :else (or (= a (first lat))
              (member? a (rest lat)))))
-
-;;; In idiomatic clojure
-
-(defn member?
-  "Return true if atom `a` is a member of the list `lat`"
-  [a lat]
-  (boolean ((set lat) a)))
 
 
 ;;; The First Commandment
