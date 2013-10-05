@@ -1,25 +1,28 @@
 (ns little-cljer.ch03-cons-the-magnificent)
-;;; Or in our case, conj.
+;;; Or in our case, `conj`.
 
-;;; Now, `conj` behaves differently than `cons`
-;;; conj is optimized for the various collection types that it takes
+;;; Now, `conj` behaves differently than `cons`.
+;;; `conj` is optimized for the various collection types that it takes
 ;;; Therefore:
+
+;;; <code>
 ;;; (conj '(:a) :b) => '(:b :a) ; append to beginning of list
 ;;; (conj [:a] :b) => [:a :b] ; append to end of vector
+;;; </code>
 
-;;; Note:
-;;; Since cons always appends to the beginning of a list in scheme,
+;;; *Note*:
+;;; Since `cons` always appends to the beginning of a list in scheme,
 ;;; we will be strictly using lists to represent collections in this
 ;;; chapter.
 
 
-;;; The Second Commandment
-;;; ======================
-;;; Use `cons` (CLJ: conj) to build lists
+;;; > The Second Commandment
+;;; > ----------------------
+;;; > Use `cons` to build lists.
 
 
 (defn rember
-  "Remove the _first_ occurrence of atom a from list lat"
+  "Remove the _first_ occurrence of atom `a` from list `lat`"
   [a lat]
   (cond
    (empty? lat) '()
@@ -35,10 +38,10 @@
    :else (conj (firsts (rest ll)) (first (first ll)))))
 
 
-;;; The Third Commandment
-;;; =====================
-;;; When building a list, describe the first typical element, and then
-;;; `cons` (CLJ: conj) it onto the natural recursion
+;;; > The Third Commandment
+;;; > ---------------------
+;;; > When building a list, describe the first typical element, and then
+;;; > `cons` it onto the natural recursion.
 
 
 (defn insertR
@@ -85,7 +88,7 @@
    :else (conj (subst2 new o1 o2 (rest lat)) (first lat))))
 
 
-;;; go repeat the cake-consing
+;;; Go repeat the cake-consing
 
 
 (defn multirember
@@ -119,11 +122,11 @@
    :else (conj (multiinsertL new old (rest lat)) (first lat))))
 
 
-;;; The Fourth Commandment
-;;; ======================
-;;; Always change at least one argument when recurring. It must be
-;;; changed to be closer to termination. The changing argument must be
-;;; tested in the termination condition.
+;;; > The Fourth Commandment
+;;; > ----------------------
+;;; > Always change at least one argument when recurring. It must be
+;;; > changed to be closer to termination. The changing argument must be
+;;; > tested in the termination condition.
 
 
 (defn multisubst

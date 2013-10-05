@@ -118,12 +118,12 @@
               (eqlist? (rest l1) (rest l2)))))
 
 
-;;; At this point, ^ my mind was blown a little.
+;;; See what we did here?
 
 
-;;; The Sixth Commandment
-;;; =====================
-;;; Simplify only after the function is correct.
+;;; > The Sixth Commandment
+;;; > ---------------------
+;;; > Simplify only after the function is correct.
 
 
 (defn rember

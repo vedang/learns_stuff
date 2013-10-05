@@ -7,9 +7,9 @@
 ;;; An entry is a pair of lists whose first list is a set.
 ;;; Also the two lists must be of equal length
 ;;; Eg:
-;;; ((:a :b :c) (:d :e :f))
+;;; `((:a :b :c) (:d :e :f))`
 ;;; or
-;;; ((:a :b :c) (:d :d :d))
+;;; `((:a :b :c) (:d :d :d))`
 
 ;;; An entry is a representation of a hash-map. The first set is the
 ;;; keys in the map and the second list is the values of those keys in
@@ -273,12 +273,14 @@
 
 
 ;;; Example code:
+;; <code><pre>
 ;;     (value '((fn [coffee klutz party]
 ;;                (cond
 ;;                 coffee klutz
 ;;                 :else party))
 ;;              false 1 2))
-;;; => 2
+;; => 2
+;; </pre></code>
 ;;;
 
 ;;; Are we finished now? Yes, we are exhausted.

@@ -112,11 +112,6 @@
           (first lat))))
 
 
-;;; number? -> number?
-;;; primitive function which returns true or false depending on whether
-;;; the arg is a number.
-
-
 (defn no-nums
   "Remove all numbers from a list of atoms"
   [lat]
@@ -127,7 +122,7 @@
 
 
 (defn all-nums
-  "Extract a tuple from a lat."
+  "Extract a tuple from a `lat`."
   [lat]
   (cond
    (empty? lat) '()
@@ -136,8 +131,8 @@
 
 
 
-(def ^{:doc "An eq? function for both numbers and atoms. eqan? is
-           unnecessary in clojure since = will work perfectly fine."}
+(def ^{:doc "An `eq?` function for both numbers and atoms. `eqan?` is
+            unnecessary in clojure since `=` will work perfectly fine."}
   eqan? clojure.core/=)
 
 

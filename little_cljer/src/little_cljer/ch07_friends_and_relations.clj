@@ -3,7 +3,8 @@
              :refer [member?]]
             [little-cljer.ch03-cons-the-magnificent :refer [multirember firsts]]
             [little-cljer.ch04-numbers-games :refer [length]]
-            [little-cljer.ch01-toys :refer [atom?]]))
+            [little-cljer.ch01-toys :refer [atom?]])
+  (:refer-clojure :exclude [set?]))
 
 
 (defn set?
@@ -176,6 +177,7 @@
   (fun? (revrel rel)))
 
 
-;;; Go get a ((chocolate chip) (doughy cookie))
+;;; Go get a `((chocolate chip) (doughy cookie))`
+
 ;;; Excellent chocolate chip doughy cookie recipe follows.
 ;;; Not reproduced due to lack of culinary skills.

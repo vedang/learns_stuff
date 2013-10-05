@@ -90,9 +90,9 @@
 ;;; ^ This is cool.
 
 
-;;; The Ninth Commandment
-;;; =====================
-;;; Abstract common patterns with a new function
+;;; > The Ninth Commandment
+;;; > ---------------------
+;;; > Abstract common patterns with a new function
 
 
 ;;; The function `value` from Chapter 06: Shadows could benefit from a
@@ -182,16 +182,18 @@
 
 
 ;;; Example execution code:
-;;     (multirember&co :b
-;;                     [:a :b :c :tuna :Tuna :tuna]
-;;                     (fn [ls1 ls2]
-;;                       [(count ls1) (count ls2)]))
+;; <code>
+;;    (multirember&co :b
+;;                    [:a :b :c :tuna :Tuna :tuna]
+;;                    (fn [ls1 ls2]
+;;                      [(count ls1) (count ls2)]))
+;; </code>
 ;;;
 
 
-;;; The Tenth Commandment
-;;; =====================
-;;; Build functions to collect more than one value at a time.
+;;; > The Tenth Commandment
+;;; > --------------------
+;;; > Build functions to collect more than one value at a time.
 
 
 (defn multiinsertLR
@@ -287,9 +289,11 @@
 
 
 ;;; Example execution code:
+;; <code>
 ;;      (evens-only*&co [[1 3 5 7] [2 4 6 8] [3 4 5 6] 4 5 6]
 ;;                      (fn [ls s p]
 ;;                        [ls s p]))
+;; </code>
 ;;;
 
 

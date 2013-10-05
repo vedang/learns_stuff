@@ -3,14 +3,14 @@
 
 ;;; Language primitives that we need to know:
 
-;;; 1. define -> def
+;;; `define` -> `def`
+
 ;;; Binds a variable to a value
 
-;;; 2. lambda -> fn
-;;; Defines a function.
+;;; `lambda` -> `fn`
 
-;;; 3. defn ->
-;;; (defn ...) is a short form for (def ... (fn))
+;;; Defines a function.
+;;; `(defn ...)` is a short form for `(def ... (fn))`
 
 
 (defn lat?
@@ -22,9 +22,6 @@
    :else false))
 
 
-;;; 4. or -> or
-
-
 (defn member?
   "Return true if atom `a` is a member of the list `lat`"
   [a lat]
@@ -34,10 +31,10 @@
              (member? a (rest lat)))))
 
 
-;;; The First Commandment
-;;; =====================
-;;; Always ask `null?` (CLJ: empty? / nil?) as the first question in
-;;; expressing any function
+;;; > The First Commandment
+;;; > ---------------------
+;;; > Always ask `null?` as the first question in expressing any
+;;; > function.
 
 
 ;;; Do you believe all this? Then you may rest.

@@ -2,7 +2,8 @@
   (:require [little-cljer.ch01-toys :refer [atom?]]
             [little-cljer.ch04-numbers-games :refer [pick]]
             [little-cljer.ch07-friends-and-relations
-             :refer [build a-pair? revpair]]))
+             :refer [build a-pair? revpair]])
+  (:refer-clojure :exclude [shuffle]))
 
 
 (defn keep-looking
@@ -299,9 +300,9 @@
 
 ;;; What is this? This is `length`.
 
-;;; (KABOOM!)[http://i.imgur.com/CUz4owd.gif]
+;;; [KABOOM!](http://i.imgur.com/CUz4owd.gif)
 
-;;; Let's add one final touch. (mk-length mk-length) is what "looks
+;;; Let's add one final touch. `(mk-length mk-length)` is what "looks
 ;;; like" length. (Refer to the original definition of length.) So
 ;;; let's re-write our function as follows:
 
@@ -316,12 +317,12 @@
       ((mk-length mk-length) x)))))
 
 
-;;; Note how we've wrapped the call to (mk-length mk-length) in a
+;;; Note how we've wrapped the call to `(mk-length mk-length)` in a
 ;;; function. Why did we do this? Because if we try to evaluate the
-;;; value of (mk-length mk-length), we'll end up in an endless loop.
+;;; value of `(mk-length mk-length)`, we'll end up in an endless loop.
 
 ;;; The function in the center looks exactly like our length
-;;; function. Can we extract it out of the innards of mk-length?
+;;; function. Can we extract it out of the innards of `mk-length`?
 
 
 ((fn [le]
@@ -335,9 +336,9 @@
      (if (empty? l) 0 (inc (length (rest l)))))))
 
 
-;;; If the lower function, the one which looks like length, is the
+;;; If the lower function, the one which looks like `length`, is the
 ;;; length function - then what is the upper function? It's the
-;;; function that MAKES LENGTH.
+;;; function that _MAKES LENGTH_.
 
 ;;; This is called the applicative-order Y combinator
 

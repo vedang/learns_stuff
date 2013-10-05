@@ -4,12 +4,13 @@
   (:refer-clojure :exclude [+ *]))
 
 
-;;; For the purposes of this chapter, following are valid arithmetic
-;;; operations:
+;;; For the purposes of this chapter, `+`, `*` and `exp` are valid arithmetic
+;;; operations.
 (def op? #{'+ '* 'exp})
 
 
-;;; An arithmetic expression is of the form: (3 + (4 exp 5))
+;;; An arithmetic expression is of the form:
+;;; `(3 + (4 exp 5))`
 ;;; i.e (aexp op aexp)
 
 
@@ -19,7 +20,7 @@
   separated by valid operators, we just have to ensure that the operators
   are operating on valid entities.
 
-  Thus, (3 + 4), (3 + (4 * 5)) are valid, but (3 + :bacon) is not."
+  Thus, `(3 + 4)`, `(3 + (4 * 5))` are valid, but `(3 + :bacon)` is not."
   [aexp]
   (cond
    (atom? aexp) (number? aexp)
@@ -46,13 +47,13 @@
         (value (first (rest (rest nexp)))))))
 
 
-;;; The Seventh Commandment
-;;; =======================
-;;; Recur on subparts that are of the same nature.
+;;; > The Seventh Commandment
+;;; > -----------------------
+;;; > Recur on subparts that are of the same nature.
 
 
 ;;; We are now changing the representation of our arithmetic expressions
-;;; to prefix notation - ie (+ 1 2) is a valid representation.
+;;; to prefix notation - ie `(+ 1 2)` is a valid representation.
 ;;; Note that only two operands are allowed as of now.
 
 
@@ -100,15 +101,17 @@
 ;;; (prefix, infix, postfix) and our value function will work just fine.
 
 
-;;; The Eighth Commandment
-;;; ======================
-;;; Use help functions to abstract from representations.
+;;; > The Eighth Commandment
+;;; > ----------------------
+;;; > Use help functions to abstract from representations.
 
 
 ;;; A new representation for numbers
-;;; 0 = ()
-;;; 1 = (())
-;;; 2 = (() ())
+;;; <code>
+;;; 0 = ();
+;;; 1 = (());
+;;; 2 = (() ());
+;;; </code>
 ;;; and so on.
 
 ;;; Let us implement new primitives for this representation.
@@ -133,16 +136,15 @@
   (rest n))
 
 
-;;; Using this, we can rewrite + as follows
 (defn plus
   "Re-implementation of +"
   [n m]
   (if (sero? m) n (recur (enc n) (zec m))))
 
 
-;;; However, will other functions like lat? work?
-;;; Recall that (lat? '(1 2 3)) is true.
-;;; But (lat? '((()) (() ()) (() () ()))) is very very false.
+;;; However, will other functions like `lat?` work?
+;;; Recall that `(lat? '(1 2 3))` is `true`.
+;;; But `(lat? '((()) (() ()) (() () ())))` is very very `false`.
 
 
-;;; You must beware of shadows.
+;;; You must beware of **shadows**.
