@@ -12,7 +12,13 @@
   In keeping with his wishes, this scraper simply scrapes all the
   chapters from the site and creates an org file for easy reading. The
   process of making the ebook - albeit straightforward - is left to
-  the reader."
+  the reader.
+
+  ;; example usage
+  (do (scrape-worm 1 base-link)
+      (build-final-file))
+  ;; You can now convert the final worm.org file to whichever format you desire.
+  "
   (:require [net.cgrand.enlive-html :as e]
             [clojure.java.io :as jio]
             [clojure.string :as cs]))
