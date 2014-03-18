@@ -1,5 +1,5 @@
 (ns worm
-  "A scrapper for the online web-series - Worm (ParaHumans).
+  "A scraper for the online web-series - Worm (ParaHumans).
 
   The author has discouraged the distribution of ebooks. From his FAQ:
 
@@ -29,7 +29,7 @@
 
 
 (defn- clean-text
-  "Clean the scrapped text."
+  "Clean the scraped text."
   [ch-text]
   (let [;; Remove the irritating &nbsp; char
         remove-nbsp (map #(cs/replace % #" " "") ch-text)
