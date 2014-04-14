@@ -57,7 +57,7 @@
                                     :datetime)))
         link-line (str "\n#+LINK: "
                        (first (e/attr-values
-                               (first (e/select scrape-data [:.entry-meta (html/attr-contains :rel "bookmark")]))
+                               (first (e/select scrape-data [:.entry-meta (e/attr-contains :rel "bookmark")]))
                                :href))
                        "\n\n")]
     (.write w author-line)
