@@ -56,3 +56,12 @@
                       "know, koalas like"
                       "you know, koalas like beer?")
            "do you know, koalas like beer?")))
+
+(t/deftest shortest-valid-fragment
+  (t/is (= (cf/stitch "he sells sea "
+                      "ea shore"
+                      "hells by "
+                      "a shell"
+                      "by the sea sho"
+                      "Sh")
+           "She sells sea shells by the sea shore")))

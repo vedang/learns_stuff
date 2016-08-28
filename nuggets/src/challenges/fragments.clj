@@ -51,7 +51,10 @@
           fragments))
 
 
-(defn stitch
+(defn stitch-fragments
+  "Given a bunch of fragments, stitch them together using a greedy
+  approach. Take the first fragment and stitch it with the first
+  available match, until a final stitched sentence can be returned."
   [& fragments]
   (let [[stitched-string unstitched-frags] (apply stitch-fragment-if-possible
                                                   (first fragments)
@@ -71,3 +74,28 @@
                      (conj (rest unstitched-frags) stitched-string))]
           (recur (dec loop-counter) new-stitched-string new-unstitched-frags))
         (apply merge-non-overlapping-fragments stitched-string unstitched-frags)))))
+
+
+(defn- rotate [n s]
+  (let [shift (mod n (count s))]
+    (lazy-cat (drop shift s)
+              (take shift s))))
+
+
+(defn stitch
+  "Given a bunch of fragments, generated all possible combination of
+  sentences from it starting the process with each fragment in turn
+  and generating result statements. Return the smallest generated
+  fragment."
+  [& fragments]
+  (let [all-stitch-combos (map (fn [n]
+                                 (apply stitch-fragments (rotate n fragments)))
+                               (range 1 (inc (count fragments))))]
+    (second (reduce (fn [[sminlen smin] s]
+                      (let [slen (count s)]
+                        (if (< slen sminlen)
+                          [slen s]
+                          [sminlen smin])))
+                    [(count (first all-stitch-combos))
+                     (first all-stitch-combos)]
+                    (rest all-stitch-combos)))))
