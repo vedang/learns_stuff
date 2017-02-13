@@ -24,7 +24,7 @@
             [clojure.string :as cs]))
 
 
-(def base-path "target/chapters/")
+(def base-path "resources/worm/chapters/")
 (def base-link "http://parahumans.wordpress.com/2011/06/11/1-1/")
 
 
