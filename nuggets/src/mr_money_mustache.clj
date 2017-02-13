@@ -188,3 +188,31 @@
         post-header (extract-post-header post-url post)
         post-content (extract-post-content post)]
     (write-to-file post-filename post-header post-content)))
+
+
+(defn- get-all-post-links
+  []
+  (let [archive-page (get-jsoup-doc-from-url archive-url)
+        blog-links (get-jsoup-elements archive-page
+                                       "ul.history > li > a[href]")]
+    (reverse (map (fn [l] (.attr l "href")) blog-links))))
+
+
+(defn- discard-scraped-posts
+  [all-post-links]
+  (let [all-filenames (map make-post-filename all-post-links)]
+    (map second
+         (remove (fn [[f l]]
+                   (.exists (File. f)))
+                 (partition 2
+                            (interleave all-filenames all-post-links))))))
+
+
+(defn scrape-mmm
+  "This is the main function. It will scrape any new posts it finds on
+  Mr Money Mustache."
+  []
+  (let [all-post-links (get-all-post-links)
+        new-post-links (discard-scraped-posts all-post-links)]
+    (doseq [l new-post-links]
+      (scrape-single-post l))))
