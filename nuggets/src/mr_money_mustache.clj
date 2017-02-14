@@ -134,6 +134,13 @@
               content-strs)))
 
 
+(defn- process-basic-elem
+  [elem content-strs]
+  (if (seq (.text elem))
+    (conj content-strs (.text elem))
+    content-strs))
+
+
 (defn- extract-element-content
   [acc e]
   (case (.tagName e)
@@ -142,6 +149,7 @@
     "li" (process-single-list-elem e acc)
     "script" acc ; don't care
     "div" (process-divs e acc)
+    "em" (process-basic-elem e acc)
     (do (ctl/info (format "Unknown element type: %s\nContent: %s"
                          (.tagName e)
                          (.text e)))
