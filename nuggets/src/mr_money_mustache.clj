@@ -59,6 +59,19 @@
     (map text-cleaner raw-content)))
 
 
+(defn- massage-single-a-elem
+  [a-elem]
+  (when (seq (.text a-elem))
+    (if (= (.attr a-elem "href")
+           (.text a-elem))
+      ;; the href is the same as the link-text, keep only one.
+      (do (.before a-elem (TextNode. (str "[[" (.attr a-elem "href") "]]") ""))
+          (.empty a-elem))
+      ;; form an org-mode link using the href and link-text
+      (do (.before a-elem (TextNode. (str "[[" (.attr a-elem "href") "][") ""))
+          (.after a-elem (TextNode. "]]" ""))))))
+
+
 (defn- process-paragraphs
   [para-element content-strs]
   ;; first add a newline when you see a <br>
@@ -67,15 +80,7 @@
 
   ;; next modify <a> links with text to org-link format
   (doseq [e (.select para-element "a")]
-    (when (seq (.text e))
-      (if (= (.attr e "href")
-             (.text e))
-        ;; the href is the same as the link-text, keep only one.
-        (do (.before e (TextNode. (str "[[" (.attr e "href") "]]") ""))
-            (.empty e))
-        ;; form an org-mode link using the href and link-text
-        (do (.before e (TextNode. (str "[[" (.attr e "href") "][") ""))
-            (.after e (TextNode. "]]" ""))))))
+    (massage-single-a-elem e))
 
   ;; now let's add this to the rest of our content
   (conj content-strs
@@ -141,6 +146,12 @@
     content-strs))
 
 
+(defn- process-single-a-elem
+  [a-elem content-strs]
+  (massage-single-a-elem a-elem)
+  (process-basic-elem a-elem content-strs))
+
+
 (defn- extract-element-content
   [acc e]
   (case (.tagName e)
@@ -150,6 +161,7 @@
     "script" acc ; don't care
     "div" (process-divs e acc)
     "em" (process-basic-elem e acc)
+    "a" (process-single-a-elem e acc)
     (do (ctl/info (format "Unknown element type: %s\nContent: %s"
                          (.tagName e)
                          (.text e)))
