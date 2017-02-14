@@ -72,15 +72,39 @@
           (.after a-elem (TextNode. "]]" ""))))))
 
 
-(defn- process-paragraphs
-  [para-element content-strs]
-  ;; first add a newline when you see a <br>
-  (doseq [e (.select para-element "br")]
-    (.after e (TextNode. "\\n" "")))
+(defn- massage-brs+trs-in-single-elem
+  [elem]
+  (doseq [e (.select elem "br, tr")]
+    (.after e (TextNode. "\\n" ""))))
+
+
+(defn- massage-ahrefs-in-single-elem
+  [elem]
+  (doseq [e (.select elem "a")]
+    (massage-single-a-elem e)))
+
+
+(defn- process-blockquotes
+  [bq-elem content-strs]
+  ;; first add a newline when you see a <br> or <tr>
+  (massage-brs+trs-in-single-elem bq-elem)
 
   ;; next modify <a> links with text to org-link format
-  (doseq [e (.select para-element "a")]
-    (massage-single-a-elem e))
+  (massage-ahrefs-in-single-elem bq-elem)
+
+  ;; now let's add this to the rest of our content
+  (conj content-strs
+        (str "\n#+BEGIN_CENTER\n"
+             (.text bq-elem)
+             "\n#+END_CENTER\n")))
+
+(defn- process-paragraphs
+  [para-elem content-strs]
+  ;; first add a newline when you see a <br> or <tr>
+  (massage-brs+trs-in-single-elem para-elem)
+
+  ;; next modify <a> links with text to org-link format
+  (massage-ahrefs-in-single-elem para-elem)
 
   ;; now let's add this to the rest of our content
   (conj content-strs
@@ -162,6 +186,7 @@
     "div" (process-divs e acc)
     "em" (process-basic-elem e acc)
     "a" (process-single-a-elem e acc)
+    "blockquote" (process-blockquotes e acc)
     (do (ctl/info (format "Unknown element type: %s\nContent: %s"
                          (.tagName e)
                          (.text e)))
