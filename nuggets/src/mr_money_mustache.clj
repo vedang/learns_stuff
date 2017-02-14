@@ -120,13 +120,14 @@
                 (.html div-element))
       content-strs)
 
-    (.hasClass div-element "mmm-box")
-    (extract-content-from-elements content-strs
+    (or (.hasClass div-element "mmm-box")
+        (.select div-element "div:not([class])"))
+    (extract-content-from-elements (if (seq (.ownText div-element))
+                                     (conj content-strs
+                                           (str (.ownText div-element) "\n"))
+                                     content-strs)
                                    (get-jsoup-elements div-element "> *"))
 
-    (.select div-element "div:not([class])")
-    (extract-content-from-elements content-strs
-                                   (get-jsoup-elements div-element "> *"))
 
     :else (do (ctl/info "Unknown div class with content: "
                        (.html div-element))
