@@ -11,16 +11,6 @@
 (def raw-data-dir "resources/mmm/posts/")
 
 
-(defn- get-jsoup-doc-from-url
-  [url]
-  (.get (Jsoup/connect url)))
-
-
-(defn- get-jsoup-elements
-  [obj css-selector]
-  (.select obj css-selector))
-
-
 (defn- make-post-filename
   [url]
   (str raw-data-dir
@@ -47,13 +37,19 @@
       fancy-single-quote #"’|‘"
       fancy-elipses #"…"
       fancy-dash #"–|—"
-      fancy-space #" "]
+      fancy-space #" "
+      ;; trick to preserve inserted \n across jsoup's .text function
+      trick-nl #"\\n"
+      ;; handle special chars to write good org files
+      org-special-char #"\*"]
   (def ^:private text-cleaner
     (comp #(cs/replace % fancy-single-quote "'")
           #(cs/replace % fancy-elipses "...")
           #(cs/replace % fancy-dash "--")
           #(cs/replace % fancy-double-quote "\"")
-          #(cs/replace % fancy-space " ")))
+          #(cs/replace % fancy-space " ")
+          #(cs/replace % trick-nl "\n")
+          #(cs/replace % org-special-char "-")))
   (defn- clean-content
     [raw-content]
     (map text-cleaner raw-content)))
@@ -107,12 +103,11 @@
   (massage-ahrefs-in-single-elem para-elem)
 
   ;; now let's add this to the rest of our content
-  (conj content-strs
-        (str ;; trick to preserve \n across jsoup's .text function
-             (cs/replace (.text para-element)
-                         "\\n"
-                         "\n")
-             "\n\n")))
+  (if (seq (.text para-elem))
+    (conj content-strs
+          (str (.text para-elem) "\n\n"))
+    content-strs))
+
 
 (defn- process-single-list-elem
   ([list-elem content-strs]
@@ -136,7 +131,7 @@
                [(process-single-list-elem eli (str eli-count ".") acc)
                 (inc eli-count)])
              [content-strs list-num]
-             (get-jsoup-elements list-element "li")))
+             (.select list-element "li")))
     "\n")))
 
 
@@ -204,8 +199,7 @@
   [post]
   (clean-content
    (extract-content-from-elements []
-                                  (get-jsoup-elements post
-                                                      "div.post_content > *"))))
+                                  (.select post "div.post_content > *"))))
 
 
 (defn- extract-post-header
@@ -213,23 +207,23 @@
   (let [author-line "#+AUTHOR: Mr. Money Mustache"
         title-line (str "\n#+TITLE: "
                         (-> post
-                            (get-jsoup-elements "h1.headline")
+                            (.select "h1.headline")
                             first
                             .text
                             text-cleaner))
         published-line (str "\n#+PUBLISHED: "
                             (-> post
-                                (get-jsoup-elements "span.post_date")
+                                (.select "span.post_date")
                                 first
                                 (.attr "title")))
         link-line (str "\n#+LINK: " post-url "\n\n")]
     [author-line title-line published-line link-line]))
 
 
-(defn- scrape-single-post
+(defn scrape-single-post
   [post-url]
   (ctl/info "\nScraping: " post-url)
-  (let [post (get-jsoup-doc-from-url post-url)
+  (let [post (.get (Jsoup/connect post-url))
         post-filename (make-post-filename post-url)
         post-header (extract-post-header post-url post)
         post-content (extract-post-content post)]
@@ -238,20 +232,23 @@
 
 (defn- get-all-post-links
   []
-  (let [archive-page (get-jsoup-doc-from-url archive-url)
-        blog-links (get-jsoup-elements archive-page
-                                       "ul.history > li > a[href]")]
+  (let [archive-page (.get (Jsoup/connect archive-url))
+        blog-links (.select archive-page "ul.history > li > a[href]")]
     (reverse (map (fn [l] (.attr l "href")) blog-links))))
 
 
 (defn- discard-scraped-posts
   [all-post-links]
-  (let [all-filenames (map make-post-filename all-post-links)]
-    (map second
-         (remove (fn [[f l]]
-                   (.exists (File. f)))
-                 (partition 2
-                            (interleave all-filenames all-post-links))))))
+  (let [all-filenames (map make-post-filename all-post-links)
+        new-links+files (remove (fn [[l f]]
+                                  (.exists (File. f)))
+                                (partition 2
+                                           (interleave all-post-links
+                                                       all-filenames)))]
+    (ctl/info (format "Discarding %s posts, since they're already scraped."
+                      (- (count all-filenames)
+                         (count new-links+files))))
+    (map first new-links+files)))
 
 
 (defn scrape-mmm
