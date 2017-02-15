@@ -188,6 +188,18 @@
     content-strs))
 
 
+(defn- process-h-elem
+  [indent-count h-elem content-strs]
+  (if (seq (.text h-elem))
+    (do (massage-ahrefs-in-single-elem h-elem)
+        (conj content-strs (str "\n"
+                                (apply str (repeat indent-count "-"))
+                                " "
+                                (.text h-elem)
+                                "\n")))
+    content-strs))
+
+
 (defn- process-single-a-elem
   [a-elem content-strs]
   (massage-single-a-elem a-elem)
@@ -200,9 +212,15 @@
     "p" (process-paragraphs e acc)
     ("ol" "ul") (process-lists e acc)
     "li" (process-single-list-elem e acc)
-    "script" acc ; don't care
+    ("script" "hr") acc ;; don't care
     "div" (process-divs e acc)
-    "em" (process-basic-elem e acc)
+    ("h1" "h2" "h3" "h4" "h5") (-> e
+                                   .tagName
+                                   second
+                                   str
+                                   Integer/parseInt
+                                   (process-h-elem e acc))
+    "em"  (process-basic-elem e acc)
     "a" (process-single-a-elem e acc)
     "blockquote" (process-blockquotes e acc)
     "table" (process-tables e acc)
