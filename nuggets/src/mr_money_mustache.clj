@@ -68,10 +68,20 @@
           (.after a-elem (TextNode. "]]" ""))))))
 
 
-(defn- massage-brs+trs-in-single-elem
+(defn- massage-brs-in-single-elem
   [elem]
-  (doseq [e (.select elem "br, tr")]
+  (doseq [e (.select elem "br")]
     (.after e (TextNode. "\\n" ""))))
+
+
+(defn- massage-trs-in-single-elem
+  [elem]
+  (let [row-counter (atom 0)]
+    (doseq [e (.select elem "tr")]
+      (when (pos? @row-counter)
+        (.before e (TextNode. (str @row-counter ". ") "")))
+      (.after e (TextNode. "\\n" ""))
+      (swap! row-counter inc))))
 
 
 (defn- massage-ahrefs-in-single-elem
@@ -80,10 +90,22 @@
     (massage-single-a-elem e)))
 
 
+(defn- process-tables
+  [table-elem content-strs]
+  ;; first add a newline when you see a <tr>
+  (massage-trs-in-single-elem table-elem)
+
+  ;; now let's add this to the rest of our content
+  (conj content-strs
+        (str (.text table-elem)
+             "\n")))
+
+
 (defn- process-blockquotes
   [bq-elem content-strs]
   ;; first add a newline when you see a <br> or <tr>
-  (massage-brs+trs-in-single-elem bq-elem)
+  (massage-brs-in-single-elem bq-elem)
+  (massage-trs-in-single-elem bq-elem)
 
   ;; next modify <a> links with text to org-link format
   (massage-ahrefs-in-single-elem bq-elem)
@@ -97,7 +119,8 @@
 (defn- process-paragraphs
   [para-elem content-strs]
   ;; first add a newline when you see a <br> or <tr>
-  (massage-brs+trs-in-single-elem para-elem)
+  (massage-brs-in-single-elem para-elem)
+  (massage-trs-in-single-elem para-elem)
 
   ;; next modify <a> links with text to org-link format
   (massage-ahrefs-in-single-elem para-elem)
@@ -182,6 +205,7 @@
     "em" (process-basic-elem e acc)
     "a" (process-single-a-elem e acc)
     "blockquote" (process-blockquotes e acc)
+    "table" (process-tables e acc)
     (do (ctl/info (format "Unknown element type: %s\nContent: %s"
                          (.tagName e)
                          (.text e)))
