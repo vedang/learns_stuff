@@ -162,9 +162,20 @@
   [div-element content-strs]
   (cond
     (.hasClass div-element "wp-caption")
-    (do ;; ignore image divs
-      (ctl/info "Ignoring image div with content: "
-                (.html div-element))
+    ;; handle image divs
+    (if (and (first (.select div-element "> a"))
+             (first (.select div-element "> p.wp-caption-text")))
+      (into content-strs
+            ["\n#+BEGIN_EXAMPLE"
+             (str "\nIMG: "
+                  (.attr (first (.select div-element "> a"))
+                         "href"))
+             (->> "> p.wp-caption-text"
+                  (.select div-element)
+                  first
+                  .text
+                  (str "\nCAPTION: "))
+             "\n#+END_EXAMPLE\n"])
       content-strs)
 
     (or (.hasClass div-element "mmm-box")
