@@ -9,7 +9,7 @@
 (def archive-url
   "http://www.mrmoneymustache.com/all-the-posts-since-the-beginning-of-time/")
 (def raw-data-dir "resources/mmm/posts/")
-
+(def known-content? (atom true))
 
 (defn- make-post-filename
   [url]
@@ -190,7 +190,8 @@
                                      (.select div-element "> *")))
 
     :else (do (ctl/info "Unknown div class with content: "
-                       (.html div-element))
+                        (.html div-element))
+              (reset! known-content? false)
               content-strs)))
 
 
@@ -240,6 +241,7 @@
     (do (ctl/info (format "Unknown element type: %s\nContent: %s"
                          (.tagName e)
                          (.text e)))
+        (reset! known-content? false)
         acc)))
 
 
@@ -278,11 +280,13 @@
 (defn scrape-single-post
   [post-url]
   (ctl/info "\nScraping: " post-url)
+  (reset! known-content? true)
   (let [post (.get (Jsoup/connect post-url))
         post-filename (make-post-filename post-url)
         post-header (extract-post-header post-url post)
         post-content (extract-post-content post)]
-    (write-to-file post-filename post-header post-content)))
+    (when @known-content?
+      (write-to-file post-filename post-header post-content))))
 
 
 (defn- get-all-post-links
