@@ -226,7 +226,7 @@
     "p" (process-paragraphs e acc)
     ("ol" "ul") (process-lists e acc)
     "li" (process-single-list-elem e acc)
-    ("script" "hr") acc ;; don't care
+    ("script" "hr" "br") acc ;; don't care
     "div" (process-divs e acc)
     ("h1" "h2" "h3" "h4" "h5") (-> e
                                    .tagName
@@ -234,7 +234,7 @@
                                    str
                                    Integer/parseInt
                                    (process-h-elem e acc))
-    "em"  (process-basic-elem e acc)
+    ("em" "strong" "center") (process-basic-elem e acc)
     "a" (process-single-a-elem e acc)
     "blockquote" (process-blockquotes e acc)
     "table" (process-tables e acc)
