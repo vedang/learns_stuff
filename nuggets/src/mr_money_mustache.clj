@@ -40,7 +40,11 @@
       fancy-space #" "
       ;; trick to preserve inserted \n across jsoup's .text function
       trick-nl #"\\n"
-      ;; handle special chars to write good org files
+      ;; handle special chars to write good org files. * is useful to
+      ;; link to subtrees in an org-file when used as follows:
+      ;; [[*Foo][Link Text]]. In other cases, it is a headline
+      ;; indicator and I don't want my content to have this char.
+      org-special-char-is-not-subtree-link #"^(?!.*\[\*).*\*"
       org-special-char #"\*"]
   (def ^:private text-cleaner
     (comp #(cs/replace % fancy-single-quote "'")
@@ -49,7 +53,10 @@
           #(cs/replace % fancy-double-quote "\"")
           #(cs/replace % fancy-space " ")
           #(cs/replace % trick-nl "\n")
-          #(cs/replace % org-special-char "-")))
+          (fn [s]
+            (if (re-find org-special-char-is-not-subtree-link s)
+              (cs/replace s org-special-char "-")
+              s))))
   (defn- clean-content
     [raw-content]
     (map text-cleaner raw-content)))
