@@ -11,4 +11,5 @@
                  [com.fasterxml.jackson.core/jackson-core "2.8.5"]
                  [com.fasterxml.jackson.core/jackson-databind "2.8.5"]
                  [com.fasterxml.jackson.core/jackson-annotations "2.8.5"]
-                 [org.jsoup/jsoup "1.10.2"]])
+                 [org.jsoup/jsoup "1.10.2"]
+                 [clj-time "0.13.0"]])

@@ -1,8 +1,10 @@
 (ns mr-money-mustache
-  (:require [clojure.java.io :as jio]
+  (:require [clj-time.core :as ct]
+            [clojure.java.io :as jio]
             [clojure.string :as cs]
             [clojure.tools.logging :as ctl])
   (:import java.io.File
+           [org.joda.time.format DateTimeFormat DateTimeFormatter]
            org.jsoup.Jsoup
            org.jsoup.nodes.TextNode))
 
@@ -336,3 +338,92 @@
         new-post-links (discard-scraped-posts all-post-links)]
     (doseq [l new-post-links]
       (scrape-single-post l))))
+
+
+(defn- add-proper-nls
+  [l]
+  (if (seq l) (str l "\n") "\n\n"))
+
+
+(let [mustache-link-re #"http://www.mrmoneymustache.com/\d{4}/\d{2}/\d{2}/[^/]*"]
+  (defn- replace-mustache-links-with-local-links
+    [l]
+    (if-let [mustache-links (re-seq mustache-link-re l)]
+      (reduce (fn [acc ml]
+                (let [local-link (make-post-filename ml)
+                      local-title (with-open [rdr (jio/reader local-link)]
+                                    (cs/replace-first (second (line-seq rdr))
+                                                      "#+TITLE: "
+                                                      ""))
+                      org-local-link (str "*" local-title)]
+                  (cs/replace acc ml org-local-link)))
+              l
+              (map #(str % "/")
+                   mustache-links))
+      l)))
+
+
+(let [nl-counter (atom 0)]
+  (defn- too-many-nls
+    [l]
+    (if (seq (cs/trim l))
+      (do (reset! nl-counter 0)
+          false)
+      (do (swap! nl-counter inc)
+          (if (> @nl-counter 1)
+            (do (swap! nl-counter dec)
+                true)
+            false)))))
+
+
+(defn- write-post-to-final-org-file
+  [writer post]
+  (try (with-open [^java.io.Reader rdr (jio/reader post)]
+         (let [post-file-strs (reverse (drop-while (partial = "")
+                                                   (reverse (line-seq rdr))))
+               post-title-name (str "* "
+                                    (cs/replace-first (second post-file-strs)
+                                                      "#+TITLE: "
+                                                      ""))
+               post-content (apply str
+                                   (map (comp replace-mustache-links-with-local-links
+                                              add-proper-nls)
+                                        (remove too-many-nls
+                                                (drop 4 post-file-strs))))]
+           (.write writer post-title-name)
+           (.write writer post-content)
+           (.write writer "\n")))
+       (catch java.io.FileNotFoundException _
+         ;; thrown if we're trying to read a dir
+         (ctl/info "Caught: " post))))
+
+
+(defn- get-post-published-date
+  [post-file]
+  (let [date-str (try (with-open [rdr (jio/reader post-file)]
+                        (cs/replace-first (first (drop 2 (line-seq rdr)))
+                                          "#+PUBLISHED: "
+                                          ""))
+                      (catch java.io.FileNotFoundException _
+                        ;; thrown if we're trying to read a dir
+                        "1970-01-01"))
+        dtf ^DateTimeFormatter (DateTimeFormat/forPattern "yyyy-MM-dd")]
+    (.parseDateTime dtf date-str)))
+
+
+(defn build-final-org-file
+  "All the posts are ready, let's go for it. Returns a single org file
+  that can then be converted to HTML, PDF, Mobi etc."
+  []
+  (let [single-filepath (str raw-data-dir "../MrMoneyMustache.org")
+        sorted-post-files (sort (fn [f1 f2]
+                                  (compare (get-post-published-date f1)
+                                           (get-post-published-date f2)))
+                                (file-seq (java.io.File. raw-data-dir)))]
+    (with-open [^java.io.Writer w (jio/writer single-filepath)]
+      (.write w "#+AUTHOR: Mr. Money Mustache")
+      (.write w "\n#+TITLE: Mr. Money Mustache's Blog Posts")
+      (.write w (str "\n#+CREATED_AT: " (ct/now) "\n"))
+      (doseq [f sorted-post-files]
+        (ctl/info "Adding Post: " (.getName f))
+        (write-post-to-final-org-file w f)))))
