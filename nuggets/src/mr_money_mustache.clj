@@ -165,6 +165,16 @@
     "\n")))
 
 
+(defn- process-imgs
+  [img-elem content-strs]
+  (into content-strs
+        ["\n#+BEGIN_EXAMPLE"
+         (str "\nIMG: " (.attr img-elem "src"))
+         (str "\nTITLE: " (.attr img-elem "title"))
+         (str "\nALT: " (.attr img-elem "alt"))
+         "\n#+END_EXAMPLE\n"]))
+
+
 (defn- process-divs
   [div-element content-strs]
   (cond
@@ -233,7 +243,7 @@
     "p" (process-paragraphs e acc)
     ("ol" "ul") (process-lists e acc)
     "li" (process-single-list-elem e acc)
-    ("script" "hr" "br") acc ;; don't care
+    ("script" "hr" "br" "audio") acc ;; don't care
     "div" (process-divs e acc)
     ("h1" "h2" "h3" "h4" "h5") (-> e
                                    .tagName
@@ -241,10 +251,11 @@
                                    str
                                    Integer/parseInt
                                    (process-h-elem e acc))
-    ("em" "strong" "center") (process-basic-elem e acc)
+    ("em" "strong" "center" "i" "b" "dl") (process-basic-elem e acc)
     "a" (process-single-a-elem e acc)
     "blockquote" (process-blockquotes e acc)
     "table" (process-tables e acc)
+    "img" (process-imgs e acc)
     (do (ctl/info (format "Unknown element type: %s\nContent: %s"
                          (.tagName e)
                          (.text e)))
