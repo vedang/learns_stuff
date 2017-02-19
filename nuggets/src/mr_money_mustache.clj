@@ -345,21 +345,34 @@
   (if (seq l) (str l "\n") "\n"))
 
 
-(let [mustache-link-re #"http://www.mrmoneymustache.com/\d{4}/\d{2}/\d{2}/[^/]*"]
+(let [mustache-link-re #"http://www\.mrmoneymustache\.com/\d{4}/\d{2}/\d{2}/[^/\]]*|\.\./\d{4}/\d{2}/\d{2}/[^/\]]*"]
   (defn- replace-mustache-links-with-local-links
     [l]
     (if-let [mustache-links (re-seq mustache-link-re l)]
       (reduce (fn [acc ml]
                 (let [local-link (make-post-filename ml)
-                      local-title (with-open [rdr (jio/reader local-link)]
-                                    (cs/replace-first (second (line-seq rdr))
-                                                      "#+TITLE: "
-                                                      ""))
-                      org-local-link (str "*" local-title)]
+                      local-title (try (with-open [rdr (jio/reader local-link)]
+                                         (cs/replace-first (second (line-seq rdr))
+                                                           "#+TITLE: "
+                                                           ""))
+                                       (catch java.io.FileNotFoundException _
+                                         ;; MMM is linking to a post
+                                         ;; he has deleted.
+                                         (ctl/info "Caught: Deleted Post / Missing local post: " ml)))
+                      org-local-link (if local-title
+                                       (str "*" local-title)
+                                       ml)]
                   (ctl/info (format "Converting %s to %s"
                                     ml
                                     org-local-link))
-                  (cs/replace acc ml org-local-link)))
+                  (if (or (= org-local-link ml)
+                          (re-find (re-pattern (str ml "#comment|comment"))
+                                   acc))
+                    ;; either there is no local link for this MMM
+                    ;; link, or the link is to some comment on the
+                    ;; mustache blog: leave the broken link as it is.
+                    acc
+                    (cs/replace acc ml org-local-link))))
               l
               (map #(str % "/")
                    mustache-links))
