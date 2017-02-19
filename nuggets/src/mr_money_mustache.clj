@@ -16,9 +16,7 @@
 (defn- make-post-filename
   [url]
   (str raw-data-dir
-       (cs/join "-"
-                (drop 3
-                      (cs/split url #"/")))
+       (cs/join "-" (reverse (take 4 (reverse (cs/split url #"/")))))
        ".org"))
 
 
@@ -70,10 +68,12 @@
     (if (= (.attr a-elem "href")
            (.text a-elem))
       ;; the href is the same as the link-text, keep only one.
-      (do (.before a-elem (TextNode. (str "[[" (.attr a-elem "href") "]]") ""))
+      (do (.before a-elem
+                   (TextNode. (str "[[" (cs/trim (.attr a-elem "href")) "]]") ""))
           (.empty a-elem))
       ;; form an org-mode link using the href and link-text
-      (do (.before a-elem (TextNode. (str "[[" (.attr a-elem "href") "][") ""))
+      (do (.before a-elem
+                   (TextNode. (str "[[" (cs/trim (.attr a-elem "href")) "][") ""))
           (.after a-elem (TextNode. "]]" ""))))))
 
 
@@ -342,7 +342,7 @@
 
 (defn- add-proper-nls
   [l]
-  (if (seq l) (str l "\n") "\n\n"))
+  (if (seq l) (str l "\n") "\n"))
 
 
 (let [mustache-link-re #"http://www.mrmoneymustache.com/\d{4}/\d{2}/\d{2}/[^/]*"]
@@ -356,6 +356,9 @@
                                                       "#+TITLE: "
                                                       ""))
                       org-local-link (str "*" local-title)]
+                  (ctl/info (format "Converting %s to %s"
+                                    ml
+                                    org-local-link))
                   (cs/replace acc ml org-local-link)))
               l
               (map #(str % "/")
@@ -381,10 +384,10 @@
   (try (with-open [^java.io.Reader rdr (jio/reader post)]
          (let [post-file-strs (reverse (drop-while (partial = "")
                                                    (reverse (line-seq rdr))))
-               post-title-name (str "* "
-                                    (cs/replace-first (second post-file-strs)
-                                                      "#+TITLE: "
-                                                      ""))
+               post-title (cs/replace-first (second post-file-strs)
+                                            "#+TITLE: "
+                                            "")
+               post-title-name (str "* " post-title "\n")
                post-content (apply str
                                    (map (comp replace-mustache-links-with-local-links
                                               add-proper-nls)
@@ -393,9 +396,10 @@
            (.write writer post-title-name)
            (.write writer post-content)
            (.write writer "\n")))
-       (catch java.io.FileNotFoundException _
+       (catch java.io.FileNotFoundException e
          ;; thrown if we're trying to read a dir
-         (ctl/info "Caught: " post))))
+         (ctl/info "Caught: " post)
+         (ctl/info "Error: " e))))
 
 
 (defn- get-post-published-date
