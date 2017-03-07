@@ -70,9 +70,9 @@
   involving this piece, make sure that the board is updated accurately
   as the piece moves from the previous cell to the new cell."
   [[piece dest-cell] [[_ src-cell] _]]
-  (alter (get-in board dest-cell) place piece)
-  (alter (get-in board src-cell ) place :-)
-  (alter num-moves inc))
+  (commute (get-in board dest-cell) place piece)
+  (commute (get-in board src-cell ) place :-)
+  (commute num-moves inc))
 
 (defn update-move-order-tuple
   "Update the stored `move-order-tuple` variable to the latest move."
