@@ -83,6 +83,7 @@
 (defn make-move
   "Pick the next move for the next player. Make the move."
   []
-  (let [move (choose-move @move-order-tuple)]
-    (dosync (move-piece move @move-order-tuple))
-    (dosync (update-move-order-tuple move))))
+  (dosync
+   (let [move (choose-move @move-order-tuple)]
+     (move-piece move @move-order-tuple)
+     (update-move-order-tuple move))))
