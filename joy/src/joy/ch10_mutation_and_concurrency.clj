@@ -107,3 +107,31 @@
   (Thread/sleep 10000)
   (conj coll item))
 
+(defn do-log
+  [msg-id message]
+  (println msg-id ":" message)
+  (inc msg-id))
+
+(defn do-step
+  "Given a log-agent, a channel doing the work, and a message to
+  print, ask the agent to print the message."
+  [logger channel message]
+  (Thread/sleep 1)
+  (send-off logger
+            do-log
+            (str channel ": " message)))
+
+(defn three-step
+  "Do something which takes 3 steps. Log the steps properly."
+  [logger channel]
+  (do-step logger channel " ready to begin (step 0)")
+  (do-step logger channel " warming up (step 1)")
+  (do-step logger channel " really getting going now (step 2)")
+  (do-step logger channel " done! (step 3)"))
+
+(defn all-together-now
+  "Log all the things"
+  [logger]
+  (dothreads! #(three-step logger "alpha"))
+  (dothreads! #(three-step logger "beta"))
+  (dothreads! #(three-step logger "omega")))
