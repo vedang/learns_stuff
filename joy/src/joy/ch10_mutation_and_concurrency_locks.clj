@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [aget aset count seq])
   (:require [clojure.core :as clj]
             [joy.ch10-mutation-and-concurrency :refer (dothreads!)])
-  (:import [java.util.concurrent.locks ReentrantLock]))
+  (:import [java.util.concurrent.locks ReentrantLock ReentrantReadWriteLock]))
 
 
 (defprotocol SafeArray
@@ -71,3 +71,23 @@
           (try (clj/aset a i
                          (f (aget this i)))
                (finally (.unlock lk))))))))
+
+(defn make-smart2-array [t sz]
+  (let [a (make-array t sz)
+        lsz (/ sz 2)
+        L (into-array (take lsz (repeatedly #(ReentrantReadWriteLock.))))]
+    (reify
+      SafeArray
+      (count [_] (clj/count a))
+      (seq   [_] (clj/seq a))
+      (aget  [_ i]
+        (let [rlk (clj/aget L (lock-i (inc i) lsz))]
+          (.lock (.readLock rlk))
+          (try (clj/aget a i)
+               (finally (.unlock (.readLock rlk))))))
+      (aset  [this i f]
+        (let [wlk (clj/aget L (lock-i (inc i) lsz))]
+          (.lock (.writeLock wlk))
+          (try (clj/aset a i
+                         (f (aget this i)))
+               (finally (.unlock (.writeLock wlk)))))))))
