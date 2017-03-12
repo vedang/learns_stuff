@@ -87,3 +87,23 @@
    (let [move (choose-move @move-order-tuple)]
      (move-piece move @move-order-tuple)
      (update-move-order-tuple move))))
+
+(defn stress-ref [r]
+  (let [slow-tries (atom 0)]
+    (future
+      (dosync
+       (swap! slow-tries inc)
+       (Thread/sleep 200)
+       @r)
+      (println (format "r is: %s, history: %d, after: %d tries"
+                       @r (.getHistoryCount r) @slow-tries)))
+    (dotimes [i 500]
+      (Thread/sleep 10)
+      (dosync (alter r inc)))
+    :done))
+
+(defn slow-conj
+  [coll item]
+  (Thread/sleep 10000)
+  (conj coll item))
+
