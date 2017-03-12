@@ -29,3 +29,20 @@
   (def D (make-dumb-array Integer/TYPE 8))
   (pummel D)
   (seq D))
+
+(defn make-safe-array [t sz]
+  (let [a (make-array t sz)]
+    (reify
+      SafeArray
+      (count [_] (clj/count a))
+      (seq   [_] (clj/seq a))
+      (aget  [_ i] (clj/aget a i))
+      (aset  [this i f]
+        (locking a
+          (clj/aset a i
+                    (f (aget this i))))))))
+
+(comment
+  (def A (make-safe-array Integer/TYPE 8))
+  (pummel A)
+  (seq A))
