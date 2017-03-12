@@ -135,3 +135,14 @@
   (dothreads! #(three-step logger "alpha"))
   (dothreads! #(three-step logger "beta"))
   (dothreads! #(three-step logger "omega")))
+
+(defn manipulable-memoize
+  [function]
+  (let [cache (atom {})]
+    (with-meta
+      (fn [& args]
+        (or (second (find @cache args))
+            (let [ret (apply function args)]
+              (swap! cache assoc args ret)
+              ret)))
+      {:cache cache})))
