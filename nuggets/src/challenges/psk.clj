@@ -2,7 +2,8 @@
   "A Simulation of the Passport Seva Kendra"
   (:require [clj-time.core :as ct]
             [clojure.tools.logging :as ctl])
-  (:import java.util.concurrent.PriorityBlockingQueue))
+  (:import [java.util.concurrent LinkedBlockingQueue PriorityBlockingQueue]))
+
 
 (def working-hours? (atom false)) ; use this to control agents.
                                         ; Turning this off will
@@ -390,6 +391,19 @@
         (> (comp-score (:type t1))
            (comp-score (:type t2)))))))
 
+(defn- create-queue
+  "Create a queue for the kendra"
+  ([q-capacity]
+   (create-queue :lbq q-capacity))
+  ([q-type q-capacity]
+   (case q-type
+     :lbq (LinkedBlockingQueue. q-capacity)
+     ;; ^ The PSK implementation is based on a
+     ;; `LinkedBlockingQueue`. Using a `PriorityBlockingQueue`
+     ;; gives a much better experience to the people who are in
+     ;; the Kendra.
+     :pbq (PriorityBlockingQueue. q-capacity person-comparator))))
+
 (defn create-kendra-queues
   "Given the counter-types / `stages` in the kendra, create the
   appropriate queues."
@@ -402,11 +416,7 @@
                            (disj ::enter ::exit))]
     (reduce (fn [m s]
               (assoc m
-                     s (PriorityBlockingQueue. q-capacity person-comparator)))
-            ;; ^ The PSK implementation is based on a
-            ;; `LinkedBlockingQueue`. Using a `PriorityBlockingQueue`
-            ;; gives a much better experience to the people who are in
-            ;; the Kendra.
+                     s (create-queue :pbq q-capacity)))
             {}
             queues-we-need)))
 
