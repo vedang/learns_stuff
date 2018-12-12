@@ -106,7 +106,7 @@
 ;;; `enter-time` and `exit-time` are vanity metrics to
 ;;; calculate the amount of time the person spent in the PSK.
 (defrecord Person
-    [token stage stage-status enter-time exit-time total-time psk-agent])
+    [token stage stage-status enter-time exit-time total-time psk-agent stage-history])
 
 (let [token-type->char {:normal "N-"
                         :senior "S-"
@@ -117,6 +117,9 @@
     [person]
     (let [token (:token person)]
       (str (token-type->char (:type token)) (:val token)))))
+
+(defrecord StageHistory
+    [name status change-time])
 
 (defn create-person!
   "Create a new person for the PSK. Token numbers are always
@@ -129,14 +132,16 @@
                                   update
                                   person-type
                                   inc)
-                           person-type)]
+                           person-type)
+        time-instant (ct/now)]
     (Person. (Token. person-type person-number)
              ::enter
              ::done
-             (ct/now)
+             time-instant
              nil
              nil
-             nil)))
+             nil
+             [(StageHistory. ::enter ::done time-instant)])))
 
 (defn- get-processing-time-for-stage
   "Given a `stage-config`, get the processing time range for the stage.
@@ -175,6 +180,19 @@
              (create-agents s config (:counters config))))
          stages-with-counters)))
 
+(defn- store-stage-change
+  "For the given `Person` ref, store the change to their stage for later analysis."
+  ([person new-stage new-status]
+   (store-stage-change person new-stage new-status (ct/now)))
+  ([person new-stage new-status time-instant]
+   (let [stage-log (->StageHistory new-stage new-status time-instant)]
+     (dosync
+      (alter person
+             update
+             :stage-history
+             conj
+             stage-log)))))
+
 (defn- call-person-to-counter
   "Announce that person should come to the processing counter. Takes
   `person` and `notice-board` refs, performs a transactional update."
@@ -185,6 +203,7 @@
           :stage stage
           :stage-status ::in-process
           :psk-agent (agent-representation psk-agent))
+   (store-stage-change person stage ::in-process)
    (alter notice-board
           assoc
           (person-representation @person)
@@ -210,6 +229,7 @@
   (let [person-str (person-representation @person)]
     (dosync
      (alter person assoc :stage stage :stage-status ::done :psk-agent nil)
+     (store-stage-change person stage ::done)
      (alter notice-board dissoc person-str))
 
     (ctl/debug "Processing Complete!"
@@ -306,7 +326,8 @@
             :total-time (-> @person
                             :enter-time
                             (ct/interval time-instant)
-                            ct/in-seconds))))
+                            ct/in-seconds))
+     (store-stage-change person ::exit ::done time-instant)))
 
   (ctl/debug (format "Dear %s, Thank you for visiting the Passport Seva Kendra! Your entire experience took: %s mins!"
                      (person-representation @person)
@@ -324,7 +345,8 @@
    (alter person
           assoc
           :stage next-stage
-          :stage-status ::waiting))
+          :stage-status ::waiting)
+   (store-stage-change person next-stage ::waiting))
   (.offer (get stage->queue next-stage)
           person
           1
@@ -404,6 +426,27 @@
                         @done-applicants)]
     (interleave header numbers)))
 
+(defn- show-processing-log
+  "Given an identifier for a person, show their progress so far."
+  [identifier applicants]
+  (when-let [person (first (filter (comp (partial = identifier)
+                                         person-representation
+                                         deref)
+                                   @applicants))]
+    (last
+     (reduce (fn [[prev-time prev-log stream] {:keys [change-time] :as h}]
+               [change-time
+                h
+                (->> change-time
+                     (ct/interval prev-time)
+                     ct/in-seconds
+                     (assoc (dissoc prev-log :change-time) :processing-time)
+                     (conj stream))])
+             [(:enter-time @person)
+              (first (:stage-history @person))
+              []]
+             (rest (:stage-history @person))))))
+
 (defn start-the-kendra!
   "Setup our Passport Seva Kendra."
   []
@@ -434,7 +477,14 @@
   (reset! working-hours? true)
   (def state (start-the-kendra!))
   (clojure.pprint/pprint @(first state))
+  (def f (future (loop []
+                   (clojure.pprint/pprint "=========DISPLAY BOARD========")
+                   (clojure.pprint/pprint @(first state))
+                   (Thread/sleep 2000)
+                   (recur))))
+  (future-cancel f)
   (clojure.pprint/pprint (show-applicant-info (second state)))
   (clojure.pprint/pprint (show-applicant-info (last state)))
   (clojure.pprint/pprint (get-processing-time-info (last state)))
+  (clojure.pprint/pprint (show-processing-log "N-18" (last state)))
   (reset! working-hours? false))
