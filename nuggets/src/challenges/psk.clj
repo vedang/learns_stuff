@@ -16,27 +16,35 @@
   counter in this stage.
   - `next` represents the next stage for the person.
   - `counters` represent the number of counters/agents serving this stage."
+  ;; Actual Values:
+  ;; 4 Doc verification Counters
+  ;; 33 counters for Biometrics
+  ;; 12 for form checking
+  ;; 10 for final checking
+  ;; 3 for corrections
+  ;; Using different values here so that the display board is
+  ;; human-readable.
   {::enter {:next ::doc-verification}
    ::doc-verification {:next ::biometrics
                        :counters 10
-                       :display-str "A-"
-                       :processing-time-range [5 10]}
+                       :display-str "0-"
+                       :processing-time-range [1 2]}
    ::biometrics {:next ::form-check
-                 :counters 33
-                 :display-str "B-"
+                 :counters 3
+                 :display-str "A-"
                  :processing-time-range [3 15]}
    ::form-check {:next ::final-check
-                 :counters 12
-                 :display-str "C-"
+                 :counters 2
+                 :display-str "B-"
                  :processing-time-range [2 4]
                  :failure ::corrections}
    ::final-check {:next ::exit
-                  :counters 10
-                  :display-str "D-"
+                  :counters 1
+                  :display-str "C-"
                   :processing-time-range [2 4]}
    ::corrections {:next ::form-check
-                  :counters 3
-                  :display-str "E-"
+                  :counters 1
+                  :display-str "D-"
                   :processing-time-range [5 15]}})
 
 (def waiting-room-capacity 500) ; max number of waiting people
@@ -47,6 +55,7 @@
 
 (def processing-batch-size
   "no of people entering the center at one time."
+  ;; Actual capacity: 25
   25)
 
 (def new-batch-in-mins
@@ -80,14 +89,32 @@
   "Represents which % of population falls under which passport type.
 
   This distribution is just my guess! :P"
-  {:normal 80
-   :senior 10
-   :tatkal 8
+  {:normal 90
+   :senior 5
+   :tatkal 3
    :police-clearance 2})
 
-(defn- get-token-type
-  "Returns a random token type, skewed by weights defined above."
+(defn- get-token-type-by-distribution
+  "Returns a random token type, skewed by weights defined above (in
+  `token-type-distribution`)."
   []
+  ;; The idea is to use numbers to represent distribution. We take
+  ;; a distribution of:
+
+  ;; {:normal 90
+  ;;  :senior 5
+  ;;  :tatkal 3
+  ;;  :police-clearance 2}
+
+  ;; and say that a number
+  ;; 1. from 1  to 90 represents normal,
+  ;; 2. from 91 to 95 represents senior,
+  ;; 3. from 96 to 98 represents tatkal and
+  ;; 4. 99-100 represents police-clearance.
+
+  ;; Then, we use the built in `rand-int` function to generate any
+  ;; number between 1 and 100. We use the generated number to identify
+  ;; the category.
   (let [[total weighted-seq]
         (reduce (fn [[n ws] m]
                   [(+ n (:dist m))
@@ -128,7 +155,7 @@
   `token-generator` as a side-effect. This atom is used to generate
   the next token number."
   []
-  (let [person-type (get-token-type)
+  (let [person-type (get-token-type-by-distribution)
         person-number (get (swap! token-generator
                                   update
                                   person-type
@@ -150,7 +177,7 @@
   treat mins as secs in this simulation."
   [stage-config]
   (let [[min-time max-time] (:processing-time-range stage-config)]
-    (* 1000 (+ min-time (rand-int (- max-time min-time))))))
+    (* 3000 (+ min-time (rand-int (- max-time min-time))))))
 
 (defn- agent-representation
   "The visual representation of the psk-agent. eg: A-300, B-50 etc."
@@ -176,10 +203,10 @@
                                  ;; Remove the stages where no counter
                                  ;; of agents is needed.
                                  (disj ::enter ::exit))]
-    (map (fn [s]
-           (let [config (get kendra-stages s)]
-             (create-agents s config (:counters config))))
-         stages-with-counters)))
+    (mapcat (fn [s]
+              (let [config (get kendra-stages s)]
+                (create-agents s config (:counters config))))
+            stages-with-counters)))
 
 (defn- store-stage-change
   "For the given `Person` ref, store the change to their stage for later analysis."
@@ -264,7 +291,7 @@
     (ctl/info (format "[Agent: %s] Working hours are over! Closing Shop! Come back later!"
                       (agent-representation psk-agent)))))
 
-(defn- book-keeping-for-new-applicants
+(defn- book-keeping-for-applicants
   "Remove all applicants who are completely done from
   `active-applicants`. Store them in `done-applicants` for
   book-keeping.
@@ -308,7 +335,7 @@
             (ctl/debug (format "[Entry] %s new people entered into the PSK."
                                (count new-people)))
 
-            (book-keeping-for-new-applicants active-applicants done-applicants)
+            (book-keeping-for-applicants active-applicants done-applicants)
 
             (Thread/sleep (* 1000 new-batch-in-mins))
             (recur)))
@@ -348,10 +375,7 @@
           :stage next-stage
           :stage-status ::waiting)
    (store-stage-change person next-stage ::waiting))
-  (.offer (get stage->queue next-stage)
-          person
-          1
-          java.util.concurrent.TimeUnit/SECONDS))
+  (.put (stage->queue next-stage) person))
 
 (defn move-people-through
   "Review all the active applicants and move them into appropriate stages."
@@ -480,26 +504,35 @@
 (defn start-the-kendra!
   "Setup our Passport Seva Kendra."
   []
-  (let [;; Create queues for the various stages, returns a map of stage->queue
+  (let [;; Create queues for the various stages, returns a map of
+        ;; stage-name -> queue
         stage->queue (create-kendra-queues stages total-capacity)
         ;; Create all the agents
         list-of-agents (create-kendra-agents stages)
-        ;; create display board for waiting members
+        ;; Create a display board for waiting members
         notice-board (ref (sorted-map))
-        ;; track all active applicants
+        ;; Track all the active applicants
         active-applicants (ref [])
-        ;; track all applicants (for debugging / historical data purpose)
+        ;; Track all the completed applicants (for debugging /
+        ;; historical data purpose)
         done-applicants (ref [])]
-    ;; for each agent at each counter, start processing!
     (ctl/info "[PSK] Welcome, today is a good day.")
-    (doseq [as list-of-agents]
-      (let [s (-> as first deref :type)
-            q (get stage->queue s)]
-        (doseq [a as]
-          (send-off a process-applicant q notice-board))))
+    ;; For each agent at each counter, start processing!
+    (doseq [a list-of-agents]
+      ;; Get the stage this agent is working at, and the queue of
+      ;; people for that stage.
+      (let [s (:type @a)
+            q (stage->queue s)]
+        ;; Start processing people from the queue concurrently in
+        ;; independent threads.
+        (send-off a process-applicant q notice-board)))
+    ;; Start a continuous future for applicants to periodically enter
+    ;; the PSK.
     (let-people-through active-applicants done-applicants)
-    ;; start a helper process to move people from one stage to the other.
+    ;; Start a helper process to move people from one stage to the
+    ;; other.
     (move-people-through stages stage->queue active-applicants)
+    ;; Return the data. We'll use this to monitor our system.
     [notice-board active-applicants done-applicants]))
 
 
@@ -507,11 +540,12 @@
   (reset! working-hours? true)
   (def state (start-the-kendra!))
   (clojure.pprint/pprint @(first state))
-  (def f (future (loop []
-                   (clojure.pprint/pprint "=========DISPLAY BOARD========")
-                   (clojure.pprint/pprint @(first state))
-                   (Thread/sleep 2000)
-                   (recur))))
+  (def f
+    (future (loop []
+              (clojure.pprint/pprint "=========DISPLAY BOARD========")
+              (clojure.pprint/pprint @(first state))
+              (Thread/sleep 2000)
+              (recur))))
   (future-cancel f)
   (clojure.pprint/pprint (show-applicant-info (second state)))
   (clojure.pprint/pprint (show-applicant-info (last state)))
