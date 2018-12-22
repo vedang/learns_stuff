@@ -2,7 +2,7 @@
   :description "tasty nuggets"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.10.0-RC4"]
+  :dependencies [[org.clojure/clojure "1.10.0"]
                  [enlive "1.1.6" :exclusions [org.clojure/clojure]]
                  [org.clojure/tools.logging "0.4.1"]
                  [org.apache.logging.log4j/log4j-api "2.11.1"]
