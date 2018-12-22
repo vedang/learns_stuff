@@ -237,11 +237,20 @@
           (person-representation @person)
           (agent-representation psk-agent))))
 
+(def unlucky-applicant?
+  "Introduce a little anarchy!"
+  (atom #{"N-3" "S-2"}))
+
 (defn- process-person
   "Do the work for processing the given person. Takes a `person`
   object and not a ref."
   [stage stage-config psk-agent person]
-  (let [processing-time (get-processing-time-for-stage stage-config)]
+  (let [processing-time* (get-processing-time-for-stage stage-config)
+        processing-time (if (@unlucky-applicant? (person-representation person))
+                          ;; You will need more time because the gods
+                          ;; are against you.
+                          (* 10 processing-time*)
+                          processing-time*)]
     (ctl/debug (format "[Agent: %s] [Stage: %s] Doing %s ms of work for %s person"
                        (agent-representation psk-agent)
                        stage
