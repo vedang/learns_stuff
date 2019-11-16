@@ -1,2 +1,5 @@
 nuggets/resources/mmm
 nuggets/resources/worm
+.DS_Store
+.git-fetch
+.lein-env
