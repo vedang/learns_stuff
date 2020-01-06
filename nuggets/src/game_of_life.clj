@@ -3,14 +3,16 @@
 
 (defn calculate-neighbour-coordinates*
   [[x y]]
-  (->> (vector [(+ x 1) y]
+  ;; The order of generating the vector is important because it is
+  ;; used in property-based testing of the function.
+  (->> (vector [(- x 1) (- y 1)]
                [(- x 1) y]
-               [x (+ y 1)]
+               [(- x 1) (+ y 1)]
                [x (- y 1)]
-               [(+ x 1) (+ y 1)]
-               [(- x 1) (- y 1)]
+               [x (+ y 1)]
                [(+ x 1) (- y 1)]
-               [(- x 1) (+ y 1)])
+               [(+ x 1) y]
+               [(+ x 1) (+ y 1)])
        (filter (fn [[x-ord y-ord]]
                  (and (>= x-ord 0) (>= y-ord 0))))
        set))
@@ -23,7 +25,7 @@
   "Internal refactoring of common code to process cell health for a
   set of cells.
 
-  Given a set of `cells-to-check`, the `current-live-cells` and a
+  Given a set of `cells-under-test`, the `current-live-cells` and a
   `fitness-pred`, returns cells matching the pred."
   [cells-under-test current-live-cells fitness-pred]
   (reduce (fn [healthy-cells cell]
