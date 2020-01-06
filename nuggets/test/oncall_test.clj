@@ -282,10 +282,13 @@
                                    (first (drop 8 unique-test-rotation))))))
 
 (t/deftest test-fill-base-values
-  (t/is (= (sut/fill-base-values unique-test-rotation)
-           [test-base-plan
-            #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
-            #{}])))
+  (let [res (sut/fill-base-values unique-test-rotation)]
+    (t/is (= res
+             [test-base-plan
+              '(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)
+              #{}]))
+    (t/is (= (count unique-test-rotation)
+             (count (second res))))))
 
 (t/deftest test-hard-leave-constraint?
   (t/is (sut/hard-leave-constraint? test-base-plan "Harsh" 4))
@@ -328,24 +331,73 @@
                                        :farthest-from 46,
                                        :soft-leaves #{3},
                                        :hard-leaves #{4 5}})
-                                 "Harsh"
-                                 7))
+                                 "Harsh"))
   (t/is (not (sut/already-assigned? (assoc test-base-plan
                                            "Harsh"
                                            {:next #{3 7},
                                             :farthest-from 46,
                                             :soft-leaves #{3},
                                             :hard-leaves #{4 5}})
-                                    "Harsh"
-                                    7))))
+                                    "Harsh"))))
 
 (t/deftest test-eliminate-week
-  (let [res (sut/eliminate-week test-base-plan "Harsh" 3)]
-    (t/is (= {:next #{7 20 4 15 13 6 17 12 2 19 11 9 5 14 16 10 18 8},
-              :farthest-from 46,
-              :soft-leaves #{3},
-              :hard-leaves #{4 5}}
-             (get res "Harsh")))))
+  (t/is (= {:next #{7 20 4 15 13 6 17 12 2 19 11 9 5 14 16 10 18 8},
+            :farthest-from 46,
+            :soft-leaves #{3},
+            :hard-leaves #{4 5}}
+           (get (sut/eliminate-week test-base-plan "Harsh" 3)
+                "Harsh")))
+  (t/is (nil? (sut/eliminate-week (assoc test-base-plan
+                                         "Harsh"
+                                         {:next #{3}
+                                          :farthest-from 46
+                                          :soft-leaves #{3}
+                                          :hard-leaves #{4 5}})
+                                  "Harsh"
+                                  3)))
+  (t/is (nil? (sut/eliminate-week (assoc test-base-plan
+                                         "Harsh"
+                                         {:next #{3 4}
+                                          :farthest-from 46
+                                          :soft-leaves #{3}
+                                          :hard-leaves #{4 5}})
+                                  "Harsh"
+                                  3)))
+  (let [res (sut/eliminate-week (assoc test-base-plan
+                                       "Harsh"
+                                       {:next #{3 6 7}
+                                        :farthest-from 46
+                                        :soft-leaves #{3}
+                                        :hard-leaves #{4 5}})
+                                "Harsh"
+                                3)]
+    (t/is (= #{6 7} (get-in res ["Harsh" :next]))))
+  (let [res (sut/eliminate-week (assoc test-base-plan
+                                       "Harsh"
+                                       {:next #{3 6}
+                                        :farthest-from 46
+                                        :soft-leaves #{3}
+                                        :hard-leaves #{4 5}})
+                                "Harsh"
+                                3)]
+    (t/is (= #{6} (get-in res ["Harsh" :next])))))
+
+(t/deftest test-assign-week+eliminate-week-for-others
+  (let [res (sut/assign-week+eliminate-week-for-others
+             (assoc test-base-plan
+                    "Harsh"
+                    {:next #{3 6}
+                     :farthest-from 46
+                     :soft-leaves #{3}
+                     :hard-leaves #{4 5}}
+                    "Faiz"
+                    {:next #{3 6}
+                     :farthest-from 45})
+             "Harsh"
+             6)]
+    (t/is (= #{6} (get-in res ["Harsh" :next])))
+    (t/is (= #{3} (get-in res ["Faiz" :next])))
+    (t/is (nil? (some #{3 6} (get-in res ["Mourjo" :next]))))))
 
 (t/deftest test-assign-week
   ;; soft constraint
@@ -360,11 +412,10 @@
                                        :farthest-from 45})
                                "Harsh"
                                6)))
-  ;; (t/is (= (sut/assign-week test-base-plan "Harsh" 6)
-  ;;          (apply hash-map
-  ;;                 (mapcat (fn [[k v]]
-  ;;                           (if (= k "Harsh")
-  ;;                             [k (assoc v :next #{6})]
-  ;;                             [k (update v :next disj 6)]))
-  ;;                         test-base-plan))))
-  )
+  (t/is (= (sut/assign-week test-base-plan "Harsh" 6)
+           (apply hash-map
+                  (mapcat (fn [[k v]]
+                            (if (= k "Harsh")
+                              [k (assoc v :next #{6})]
+                              [k (update v :next disj 6)]))
+                          test-base-plan)))))

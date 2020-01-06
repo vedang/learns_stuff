@@ -188,9 +188,9 @@
                           (keep :prev-rotation-week)
                           first
                           inc)
-        weeks-to-assign (set (range week-counter
-                                    (+ week-counter num-weeks)))
-        base-plan (reduce (partial add-person-to-plan weeks-to-assign)
+        weeks-to-assign (range week-counter
+                               (+ week-counter num-weeks))
+        base-plan (reduce (partial add-person-to-plan (set weeks-to-assign))
                           {}
                           unique-rotation)]
 
@@ -218,7 +218,7 @@
 (defn already-assigned?
   "Return true if this person only has a single week in their next
   slot (meaning that allocation is already done for the person)."
-  [curr-plan person-name week]
+  [curr-plan person-name]
   (= 1 (count (get-in curr-plan [person-name :next]))))
 
 (declare assign-week)
@@ -265,13 +265,13 @@
                          ;; week from everyone else.
                          new-plan
                          ;; Eliminate this week for everyone else.
-                         (if-let [new-plan (eliminate-week new-plan person-name week)]
+                         (if-let [new-plan (eliminate-week new-plan pname week)]
                            new-plan
                            (reduced nil))))
                      curr-plan
                      curr-plan)]
     ;; This assignment is possible. Make it and return the plan.
-    (assoc updated-plan person-name #{week})))
+    (assoc-in updated-plan [person-name :next] #{week})))
 
 (defn assign-week
   "Trying to assign a week to a person means the following:
@@ -305,9 +305,8 @@
                 (already-eliminated? curr-plan person-name week))
     ;; Assign the week to this person and eliminate the week for
     ;; everyone else.
-    (-> curr-plan
-        (assoc-in [person-name :next] #{week})
-        (eliminate-week-for-others person-name week))))
+    (assign-week+eliminate-week-for-others curr-plan person-name week)))
+
 
 (defn next-rotation
   [rotation]
