@@ -1,6 +1,7 @@
 (ns oncall
   "Given one oncall rotation schedule, generate the next one."
-  (:require [java-time :as jt]))
+  (:require [java-time :as jt])
+  (:import [java.time.temporal IsoFields]))
 
 (def prev-rotation
   "The rotation is expected to be sorted in time (on
@@ -354,15 +355,27 @@
                  (swapper swap-count weeks)
                  (inc swap-count)))))))
 
+;;; ========= DISPLAY Functions ==========
 (defn week->date
   "Given a week, convert it to a date representation (Monday to
   Monday)."
   [week-num]
-  week-num)
+  (assert (>= 52 week-num 1)
+          "Valid value for week is between 1 and 52")
+  (let [start-date (.with (jt/local-date)
+                          IsoFields/WEEK_OF_WEEK_BASED_YEAR
+                          week-num)
+        end-date (jt/plus start-date (jt/days 7))]
+    (str (jt/format "<yyyy-MM-dd EEE>" start-date)
+         "--"
+         (jt/format "<yyyy-MM-dd EEE>" end-date))))
 
 (defn display-plan
+  "A function to take a plan and to render it in a human-readable format"
   [plan]
-  (sort-by (comp first second)
-           (map (fn [[k v]]
-                  [k (week->date (first (:next v)))])
-                plan)))
+  (map (fn [[k v]]
+         [k (week->date v)])
+        (sort-by second
+                 (map (fn [[k v]]
+                        [k (first (:next v))])
+                      plan))))
