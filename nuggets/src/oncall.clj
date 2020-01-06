@@ -15,116 +15,116 @@
   [{:name "Pardeep"
     :in-next-rotation? false
     :prev-rotation-week 32
-    :leaves []}
+    :constraints []}
    {:name "Pavitra"
     :in-next-rotation? false
     :prev-rotation-week 33
-    :leaves []}
+    :constraints []}
    {:name "Amogh"
     :in-next-rotation? true
     :prev-rotation-week 34
-    :leaves [[2 :hard :features]]}
+    :constraints [[2 :hard :feature_work]]}
    {:name "Daniel"
     :in-next-rotation? true
     :prev-rotation-week 35
     :assist "Shantanu"
-    :leaves []}
+    :constraints []}
    {:name "Mangal"
     :in-next-rotation? true
     :prev-rotation-week 36
     :assist "Shalaka"
-    :leaves []}
+    :constraints []}
    {:name "Setia"
     :in-next-rotation? true
     :prev-rotation-week 37
     :assist "Mourjo"
-    :leaves []}
+    :constraints []}
    {:name "Shantanu"
     :in-next-rotation? true
     :prev-rotation-week 38
-    :leaves [[2 :hard :features]]}
+    :constraints [[2 :hard :feature_work]]}
    {:name "Suvrat"
     :in-next-rotation? true
     :prev-rotation-week 39
-    :leaves [[2 :hard]
-             [3 :hard]
-             [4 :hard]]}
+    :constraints [[2 :hard :leave]
+                  [3 :hard :leave]
+                  [4 :hard :leave]]}
    {:name "Somya"
     :in-next-rotation? true
     :prev-rotation-week 40
-    :leaves [[2 :hard :leave]]}
+    :constraints [[2 :hard :leave]]}
    {:name "Shalaka"
     :in-next-rotation? true
     :prev-rotation-week 41
-    :leaves []}
+    :constraints []}
    {:name "Mourjo"
     :in-next-rotation? true
     :prev-rotation-week 42
-    :leaves []}
+    :constraints []}
    {:name "Vedang"
     :in-next-rotation? false
     :prev-rotation-week 43
-    :leaves [[1 :soft]]}
+    :constraints [[1 :soft :leave]]}
    {:name "Neha"
     :in-next-rotation? true
     :prev-rotation-week 44
-    :leaves []}
+    :constraints []}
    {:name "Faiz"
     :in-next-rotation? true
     :prev-rotation-week 45
-    :leaves []}
+    :constraints []}
    {:name "Harsh"
     :in-next-rotation? true
     :prev-rotation-week 46
-    :leaves [[3 :soft]
-             [4 :hard]
-             [5 :hard]]}
+    :constraints [[3 :soft :leave]
+                  [4 :hard :leave]
+                  [5 :hard :leave]]}
    {:name "Ramya"
     :in-next-rotation? true
     :prev-rotation-week 47
-    :leaves [[1 :soft]
-             [5 :hard]
-             [6 :hard]]}
+    :constraints [[1 :soft :leave]
+                  [5 :hard :leave]
+                  [6 :hard :leave]]}
    {:name "Samuel"
     :in-next-rotation? true
     :prev-rotation-week 48
-    :leaves []}
+    :constraints []}
    {:name "Rubal"
     :in-next-rotation? true
     :prev-rotation-week 49
-    :leaves [[1 :hard]
-             [2 :hard]]}
+    :constraints [[1 :hard :leave]
+                  [2 :hard :leave]]}
    {:name "Daniel"
     :in-next-rotation? true
     :prev-rotation-week 50
-    :leaves [[14 :hard]
-             [15 :hard]
-             [16 :hard]
-             [17 :hard]]}
+    :constraints [[14 :hard :leave]
+                  [15 :hard :leave]
+                  [16 :hard :leave]
+                  [17 :hard :leave]]}
    {:name "Mangal"
     :in-next-rotation? true
     :prev-rotation-week 51
-    :leaves []}
+    :constraints []}
    {:name "Setia"
     :in-next-rotation? true
     :prev-rotation-week 52
-    :leaves []}
+    :constraints []}
    {:name "Ketan"
     :in-next-rotation? true
     :prev-rotation-week 1
-    :leaves []}
+    :constraints []}
    {:name "Dinesh"
     :in-next-rotation? false
-    :leaves []}
+    :constraints []}
    {:name "Narendra"
     :in-next-rotation? true
-    :leaves []}
+    :constraints []}
    {:name "Mihil"
     :in-next-rotation? true
-    :leaves []}
+    :constraints []}
    {:name "Pranav"
     :in-next-rotation? true
-    :leaves []}])
+    :constraints []}])
 
 (defn uniquify-rotation-entries
   "Keep only the latest rotation information for any person, also keep
@@ -165,22 +165,22 @@
   person to the plan."
   [next-values plan {person-name :name
                      prev-rotation :prev-rotation-week
-                     leaves :leaves}]
-  (let [[soft-leaves hard-leaves]
-        (reduce (fn [[sl hl] [lweek ltype]]
-                  (if (= ltype :soft)
-                    [(conj sl lweek) hl]
-                    [sl (conj hl lweek)]))
+                     constraints :constraints}]
+  (let [[soft-constraints hard-constraints]
+        (reduce (fn [[sc hc] [cweek ctype _]]
+                  (if (= ctype :soft)
+                    [(conj sc cweek) hc]
+                    [sc (conj hc cweek)]))
                 [#{} #{}]
-                leaves)]
+                constraints)]
     (assoc plan
            person-name (merge {:next next-values}
                               (when prev-rotation
                                 {:farthest-from prev-rotation})
-                              (when (seq soft-leaves)
-                                {:soft-leaves soft-leaves})
-                              (when (seq hard-leaves)
-                                {:hard-leaves hard-leaves})))))
+                              (when (seq soft-constraints)
+                                {:soft-constraints soft-constraints})
+                              (when (seq hard-constraints)
+                                {:hard-constraints hard-constraints})))))
 
 (defn fill-base-values
   "Given a unique rotation, returns a `base-plan`, a set of
@@ -205,14 +205,14 @@
 (defn hard-leave-constraint?
   "Is this allocation hitting a hard constraint? If so, return true."
   [curr-plan person-name week]
-  (and (get-in curr-plan [person-name :hard-leaves])
-       ((get-in curr-plan [person-name :hard-leaves]) week)))
+  (and (get-in curr-plan [person-name :hard-constraints])
+       ((get-in curr-plan [person-name :hard-constraints]) week)))
 
 (defn soft-leave-constraint?
   "Is this allocation hitting a soft constraint? If so, return true."
   [curr-plan person-name week]
-  (and (get-in curr-plan [person-name :soft-leaves])
-       ((get-in curr-plan [person-name :soft-leaves]) week)
+  (and (get-in curr-plan [person-name :soft-constraints])
+       ((get-in curr-plan [person-name :soft-constraints]) week)
        ;; other assignment options are currently possible
        (> (count (get-in curr-plan [person-name :next])) 1)))
 
@@ -303,9 +303,10 @@
   If the assignment is not possible, return nil, else return the
   fully modified plan."
   [curr-plan person-name week]
-  ;; Check hard and soft leave constraints against allocation For hard
-  ;; leaves, assignment is not possible, return nil. For soft leaves
-  ;; where other options are possible, assignment is not advised.
+  ;; Check hard and soft constraints against allocation. For hard
+  ;; constraints, assignment is not possible, return nil. For soft
+  ;; constraints where other options are possible, assignment is not
+  ;; advised.
   (when-not (or (hard-leave-constraint? curr-plan person-name week)
                 (soft-leave-constraint? curr-plan person-name week)
                 (already-eliminated? curr-plan person-name week))
@@ -375,7 +376,7 @@
   [plan]
   (map (fn [[k v]]
          [k (week->date v)])
-        (sort-by second
-                 (map (fn [[k v]]
-                        [k (first (:next v))])
-                      plan))))
+       (sort-by second
+                (map (fn [[k v]]
+                       [k (first (:next v))])
+                     plan))))

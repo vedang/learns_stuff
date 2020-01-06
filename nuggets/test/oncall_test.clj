@@ -14,193 +14,193 @@
   [{:name "Pardeep"
     :in-next-rotation? false
     :prev-rotation-week 32
-    :leaves []}
+    :constraints []}
    {:name "Pavitra"
     :in-next-rotation? false
     :prev-rotation-week 33
-    :leaves []}
+    :constraints []}
    {:name "Amogh"
     :in-next-rotation? true
     :prev-rotation-week 34
-    :leaves []}
+    :constraints []}
    {:name "Daniel"
     :in-next-rotation? true
     :prev-rotation-week 35
     :assist "Shantanu"
-    :leaves []}
+    :constraints []}
    {:name "Mangal"
     :in-next-rotation? true
     :prev-rotation-week 36
     :assist "Shalaka"
-    :leaves []}
+    :constraints []}
    {:name "Setia"
     :in-next-rotation? true
     :prev-rotation-week 37
     :assist "Mourjo"
-    :leaves []}
+    :constraints []}
    {:name "Shantanu"
     :in-next-rotation? true
     :prev-rotation-week 38
-    :leaves []}
+    :constraints []}
    {:name "Suvrat"
     :in-next-rotation? true
     :prev-rotation-week 39
-    :leaves []}
+    :constraints []}
    {:name "Somya"
     :in-next-rotation? true
     :prev-rotation-week 40
-    :leaves []}
+    :constraints []}
    {:name "Shalaka"
     :in-next-rotation? true
     :prev-rotation-week 41
-    :leaves []}
+    :constraints []}
    {:name "Mourjo"
     :in-next-rotation? true
     :prev-rotation-week 42
-    :leaves []}
+    :constraints []}
    {:name "Vedang"
     :in-next-rotation? false
     :prev-rotation-week 43
-    :leaves [[1 :soft]]}
+    :constraints [[1 :soft :leave]]}
    {:name "Neha"
     :in-next-rotation? true
     :prev-rotation-week 44
-    :leaves []}
+    :constraints []}
    {:name "Faiz"
     :in-next-rotation? true
     :prev-rotation-week 45
-    :leaves []}
+    :constraints []}
    {:name "Harsh"
     :in-next-rotation? true
     :prev-rotation-week 46
-    :leaves [[3 :soft]
-             [4 :hard]
-             [5 :hard]]}
+    :constraints [[3 :soft :leave]
+                  [4 :hard :leave]
+                  [5 :hard :leave]]}
    {:name "Ramya"
     :in-next-rotation? true
     :prev-rotation-week 47
-    :leaves [[1 :soft]]}
+    :constraints [[1 :soft :leave]]}
    {:name "Samuel"
     :in-next-rotation? true
     :prev-rotation-week 48
-    :leaves []}
+    :constraints []}
    {:name "Rubal"
     :in-next-rotation? true
     :prev-rotation-week 49
-    :leaves [[1 :hard]
-             [2 :hard]]}
+    :constraints [[1 :hard :leave]
+                  [2 :hard :leave]]}
    {:name "Daniel"
     :in-next-rotation? true
     :prev-rotation-week 50
-    :leaves [[14 :hard]
-             [15 :hard]
-             [16 :hard]
-             [17 :hard]]}
+    :constraints [[14 :hard :leave]
+                  [15 :hard :leave]
+                  [16 :hard :leave]
+                  [17 :hard :leave]]}
    {:name "Mangal"
     :in-next-rotation? true
     :prev-rotation-week 51
-    :leaves []}
+    :constraints []}
    {:name "Setia"
     :in-next-rotation? true
     :prev-rotation-week 52
-    :leaves []}
+    :constraints []}
    {:name "Ketan"
     :in-next-rotation? true
     :prev-rotation-week 1
-    :leaves []}
+    :constraints []}
    {:name "Dinesh"
     :in-next-rotation? false
-    :leaves []}
+    :constraints []}
    {:name "Narendra"
     :in-next-rotation? true
-    :leaves []}
+    :constraints []}
    {:name "Mihil"
     :in-next-rotation? true
-    :leaves []}
+    :constraints []}
    {:name "Pranav"
     :in-next-rotation? true
-    :leaves []}])
+    :constraints []}])
 
 (def unique-test-rotation
   [{:name "Amogh"
     :in-next-rotation? true
     :prev-rotation-week 34
-    :leaves []}
+    :constraints []}
    {:name "Shantanu"
     :in-next-rotation? true
     :prev-rotation-week 38
-    :leaves []}
+    :constraints []}
    {:name "Suvrat"
     :in-next-rotation? true
     :prev-rotation-week 39
-    :leaves []}
+    :constraints []}
    {:name "Somya"
     :in-next-rotation? true
     :prev-rotation-week 40
-    :leaves []}
+    :constraints []}
    {:name "Shalaka"
     :in-next-rotation? true
     :prev-rotation-week 41
-    :leaves []}
+    :constraints []}
    {:name "Mourjo"
     :in-next-rotation? true
     :prev-rotation-week 42
-    :leaves []}
+    :constraints []}
    {:name "Neha"
     :in-next-rotation? true
     :prev-rotation-week 44
-    :leaves []}
+    :constraints []}
    {:name "Faiz"
     :in-next-rotation? true
     :prev-rotation-week 45
-    :leaves []}
+    :constraints []}
    {:name "Harsh"
     :in-next-rotation? true
     :prev-rotation-week 46
-    :leaves [[3 :soft]
-             [4 :hard]
-             [5 :hard]]}
+    :constraints [[3 :soft :leave]
+                  [4 :hard :leave]
+                  [5 :hard :leave]]}
    {:name "Ramya"
     :in-next-rotation? true
     :prev-rotation-week 47
-    :leaves [[1 :soft]]}
+    :constraints [[1 :soft :leave]]}
    {:name "Samuel"
     :in-next-rotation? true
     :prev-rotation-week 48
-    :leaves []}
+    :constraints []}
    {:name "Rubal"
     :in-next-rotation? true
     :prev-rotation-week 49
-    :leaves [[1 :hard]
-             [2 :hard]]}
+    :constraints [[1 :hard :leave]
+                  [2 :hard :leave]]}
    {:name "Daniel"
     :in-next-rotation? true
     :prev-rotation-week 50
-    :leaves [[14 :hard]
-             [15 :hard]
-             [16 :hard]
-             [17 :hard]]}
+    :constraints [[14 :hard :leave]
+                  [15 :hard :leave]
+                  [16 :hard :leave]
+                  [17 :hard :leave]]}
    {:name "Mangal"
     :in-next-rotation? true
     :prev-rotation-week 51
-    :leaves []}
+    :constraints []}
    {:name "Setia"
     :in-next-rotation? true
     :prev-rotation-week 52
-    :leaves []}
+    :constraints []}
    {:name "Ketan"
     :in-next-rotation? true
     :prev-rotation-week 1
-    :leaves []}
+    :constraints []}
    {:name "Narendra"
     :in-next-rotation? true
-    :leaves []}
+    :constraints []}
    {:name "Mihil"
     :in-next-rotation? true
-    :leaves []}
+    :constraints []}
    {:name "Pranav"
     :in-next-rotation? true
-    :leaves []}])
+    :constraints []}])
 
 (def test-base-plan
   {"Pranav"
@@ -208,12 +208,12 @@
    "Harsh"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 46,
-    :soft-leaves #{3},
-    :hard-leaves #{4 5}},
+    :soft-constraints #{3},
+    :hard-constraints #{4 5}},
    "Ramya"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 47,
-    :soft-leaves #{1}},
+    :soft-constraints #{1}},
    "Setia"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 52},
@@ -226,7 +226,7 @@
    "Daniel"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 50,
-    :hard-leaves #{14 15 16 17}},
+    :hard-constraints #{14 15 16 17}},
    "Somya"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 40},
@@ -258,7 +258,7 @@
    "Rubal"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 49,
-    :hard-leaves #{1 2}},
+    :hard-constraints #{1 2}},
    "Faiz"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 45}})
@@ -275,8 +275,8 @@
                                    (first unique-test-rotation))))
   (t/is (= {"Harsh" {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
                      :farthest-from 46,
-                     :soft-leaves #{3},
-                     :hard-leaves #{4 5}}}
+                     :soft-constraints #{3},
+                     :hard-constraints #{4 5}}}
            (sut/add-person-to-plan #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
                                    {}
                                    (first (drop 8 unique-test-rotation))))))
@@ -300,8 +300,8 @@
                                                 "Harsh"
                                                 {:next #{3},
                                                  :farthest-from 46,
-                                                 :soft-leaves #{3},
-                                                 :hard-leaves #{4 5}})
+                                                 :soft-constraints #{3},
+                                                 :hard-constraints #{4 5}})
                                          "Harsh"
                                          3)))
   (t/is (not (sut/soft-leave-constraint? test-base-plan "Amogh" 4))))
@@ -311,16 +311,16 @@
                                         "Harsh"
                                         {:next #{7 8},
                                          :farthest-from 46,
-                                         :soft-leaves #{3},
-                                         :hard-leaves #{4 5}})
+                                         :soft-constraints #{3},
+                                         :hard-constraints #{4 5}})
                                  "Harsh"
                                  3))
   (t/is (not (sut/already-eliminated? (assoc test-base-plan
                                              "Harsh"
                                              {:next #{3 7 8},
                                               :farthest-from 46,
-                                              :soft-leaves #{3},
-                                              :hard-leaves #{4 5}})
+                                              :soft-constraints #{3},
+                                              :hard-constraints #{4 5}})
                                       "Harsh"
                                       3))))
 
@@ -329,46 +329,46 @@
                                       "Harsh"
                                       {:next #{3},
                                        :farthest-from 46,
-                                       :soft-leaves #{3},
-                                       :hard-leaves #{4 5}})
+                                       :soft-constraints #{3},
+                                       :hard-constraints #{4 5}})
                                  "Harsh"))
   (t/is (not (sut/already-assigned? (assoc test-base-plan
                                            "Harsh"
                                            {:next #{3 7},
                                             :farthest-from 46,
-                                            :soft-leaves #{3},
-                                            :hard-leaves #{4 5}})
+                                            :soft-constraints #{3},
+                                            :hard-constraints #{4 5}})
                                     "Harsh"))))
 
 (t/deftest test-eliminate-week
   (t/is (= {:next #{7 20 4 15 13 6 17 12 2 19 11 9 5 14 16 10 18 8},
             :farthest-from 46,
-            :soft-leaves #{3},
-            :hard-leaves #{4 5}}
+            :soft-constraints #{3},
+            :hard-constraints #{4 5}}
            (get (sut/eliminate-week test-base-plan "Harsh" 3)
                 "Harsh")))
   (t/is (nil? (sut/eliminate-week (assoc test-base-plan
                                          "Harsh"
                                          {:next #{3}
                                           :farthest-from 46
-                                          :soft-leaves #{3}
-                                          :hard-leaves #{4 5}})
+                                          :soft-constraints #{3}
+                                          :hard-constraints #{4 5}})
                                   "Harsh"
                                   3)))
   (t/is (nil? (sut/eliminate-week (assoc test-base-plan
                                          "Harsh"
                                          {:next #{3 4}
                                           :farthest-from 46
-                                          :soft-leaves #{3}
-                                          :hard-leaves #{4 5}})
+                                          :soft-constraints #{3}
+                                          :hard-constraints #{4 5}})
                                   "Harsh"
                                   3)))
   (let [res (sut/eliminate-week (assoc test-base-plan
                                        "Harsh"
                                        {:next #{3 6 7}
                                         :farthest-from 46
-                                        :soft-leaves #{3}
-                                        :hard-leaves #{4 5}})
+                                        :soft-constraints #{3}
+                                        :hard-constraints #{4 5}})
                                 "Harsh"
                                 3)]
     (t/is (= #{6 7} (get-in res ["Harsh" :next]))))
@@ -376,8 +376,8 @@
                                        "Harsh"
                                        {:next #{3 6}
                                         :farthest-from 46
-                                        :soft-leaves #{3}
-                                        :hard-leaves #{4 5}})
+                                        :soft-constraints #{3}
+                                        :hard-constraints #{4 5}})
                                 "Harsh"
                                 3)]
     (t/is (= #{6} (get-in res ["Harsh" :next])))))
@@ -388,8 +388,8 @@
                     "Harsh"
                     {:next #{3 6}
                      :farthest-from 46
-                     :soft-leaves #{3}
-                     :hard-leaves #{4 5}}
+                     :soft-constraints #{3}
+                     :hard-constraints #{4 5}}
                     "Faiz"
                     {:next #{3 6}
                      :farthest-from 45})
