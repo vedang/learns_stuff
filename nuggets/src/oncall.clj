@@ -1,25 +1,17 @@
 (ns oncall
-  "Given one oncall rotation schedule, generate the next one."
-  (:require [clojure.edn :as edn]
-            [java-time :as jt])
-  (:import java.time.temporal.IsoFields))
+  "Given one oncall rotation schedule, generate the next one.
 
-(def rotation-file "resources/rotation.edn")
+  The rotation is expected to be sorted in time (on prev-rotation-week
+  value). Since weeks wrap over from 52 to 1, we don't want to sort
+  ourselves. We expect the input to take care of this.
 
-(defn read-rotation
-  [rot-file]
-  (edn/read-string (slurp rot-file)))
-
-(def prev-rotation
-  "The rotation is expected to be sorted in time (on
-  prev-rotation-week value). Since weeks wrap over from 52 to 1, we
-  don't want to sort ourselves. We expect the input to take care of
-  this.
+  The default rotation is stored in the resources file
+  `resources/rotation.edn`.
 
   Re: duplicate entries. This list can contain duplicate entries (for
   simple book-keeping). However, the code only considers the latest
   entry for any person (unique on name)."
-  (read-rotation rotation-file))
+  (:require [clojure.edn :as edn]))
 
 (defn uniquify-rotation-entries
   "Keep only the latest rotation information for any person, also keep
@@ -251,48 +243,11 @@
                  (swapper swap-count weeks)
                  (inc swap-count)))))))
 
-;;; ========= DISPLAY Functions ==========
-
-(defn week->date
-  "Given a week, convert it to a date representation (Monday to
-  Monday)."
-  [week-num]
-  (assert (>= 52 week-num 1)
-          "Valid value for week is between 1 and 52")
-  (let [start-date (.with (jt/local-date)
-                          IsoFields/WEEK_OF_WEEK_BASED_YEAR
-                          week-num)
-        end-date (jt/plus start-date (jt/days 7))]
-    (str (jt/format "<yyyy-MM-dd EEE>" start-date)
-         "--"
-         (jt/format "<yyyy-MM-dd EEE>" end-date))))
-
-(defn sort-plan
-  "Return a sorted array of entries in the plan, sorted on week-number
-  to be assigned to someone."
-  ;; @TODO: handle wrap-around
-  [plan]
-  (sort-by (comp first :next second)
-           plan))
-
-(defn display-plan
-  "A function to take a plan and to render it in a human-readable format"
-  [plan]
-  (map (fn [[k v]]
-         [k (-> v :next first week->date)])
-       (sort-plan plan)))
-
-;;; =========== STORE Functions ============
-
-(defn plan-entry->file-entry
-  [[pname pval]]
-  {:name pname
-   :in-next-rotation? true
-   :prev-rotation-week (first (:next pval))
-   :constraints []})
-
-(defn plan->rot-file-fmt
-  [plan rot-file]
-  (let [existing-data (read-rotation rot-file)
-        new-data (mapv plan-entry->file-entry (sort-plan plan))]
-    (vec (concat existing-data new-data))))
+;;; How to run this program
+(comment
+  (require '[oncall-util :as ou])
+  (def rotation-file "resources/rotation.edn")
+  (-> rotation-file
+      ou/read-rotation
+      next-rotation
+      ou/display-plan))
