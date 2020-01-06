@@ -1,5 +1,6 @@
 (ns oncall
-  "Given one oncall rotation schedule, generate the next one.")
+  "Given one oncall rotation schedule, generate the next one."
+  (:require [java-time :as jt]))
 
 (def prev-rotation
   "The rotation is expected to be sorted in time (on
@@ -21,7 +22,7 @@
    {:name "Amogh"
     :in-next-rotation? true
     :prev-rotation-week 34
-    :leaves []}
+    :leaves [[2 :hard :features]]}
    {:name "Daniel"
     :in-next-rotation? true
     :prev-rotation-week 35
@@ -40,15 +41,17 @@
    {:name "Shantanu"
     :in-next-rotation? true
     :prev-rotation-week 38
-    :leaves []}
+    :leaves [[2 :hard :features]]}
    {:name "Suvrat"
     :in-next-rotation? true
     :prev-rotation-week 39
-    :leaves []}
+    :leaves [[2 :hard]
+             [3 :hard]
+             [4 :hard]]}
    {:name "Somya"
     :in-next-rotation? true
     :prev-rotation-week 40
-    :leaves []}
+    :leaves [[2 :hard :leave]]}
    {:name "Shalaka"
     :in-next-rotation? true
     :prev-rotation-week 41
@@ -78,7 +81,9 @@
    {:name "Ramya"
     :in-next-rotation? true
     :prev-rotation-week 47
-    :leaves [[1 :soft]]}
+    :leaves [[1 :soft]
+             [5 :hard]
+             [6 :hard]]}
    {:name "Samuel"
     :in-next-rotation? true
     :prev-rotation-week 48
@@ -307,11 +312,57 @@
     ;; everyone else.
     (assign-week+eliminate-week-for-others curr-plan person-name week)))
 
+(defn swapper
+  "Helper function to rotate my weeks vector.
+  Use-case: The weeks vector is sorted in the order in which it should
+  assign weeks. If a given week is not possible for someone, the
+  immediate next week should be tried, and this week should be moved
+  into the next position (effectively dropping it for this person, but
+  keeping it the first week for the next person)"
+  [swap-count coll]
+  (let [drop-seq (drop swap-count coll)
+        take-seq (take swap-count coll)
+        head (take 1 drop-seq)]
+    (lazy-cat head take-seq (drop 1 drop-seq))))
 
 (defn next-rotation
   [rotation]
   (let [urot (uniquify-rotation-entries rotation)
-        [base-plan weeks-to-assign] (fill-base-values urot)]
-    base-plan
-    ;; (assign-week base-plan (:name (first urot)) (first weeks-to-assign))
-    ))
+        [base-plan weeks-to-assign assigned-weeks] (fill-base-values urot)]
+    (loop [curr-plan base-plan
+           names (map :name urot)
+           weeks weeks-to-assign
+           swap-count 1]
+      (cond
+        ;; Everyone has been assigned a week
+        (empty? names) curr-plan
+
+        ;; All available weeks have been assigned
+        (empty? weeks) curr-plan
+
+        ;; Some week is already assigned to this person
+        (already-assigned? curr-plan (first names))
+        (recur curr-plan (rest names) weeks 1)
+
+        :else
+        (if-let [new-plan (assign-week curr-plan (first names) (first weeks))]
+          ;; Assignment was successful, move to the next assignment.
+          (recur new-plan (rest names) (rest weeks) 1)
+          ;; Assignment was unsuccessful, try the next week.
+          (recur curr-plan
+                 names
+                 (swapper swap-count weeks)
+                 (inc swap-count)))))))
+
+(defn week->date
+  "Given a week, convert it to a date representation (Monday to
+  Monday)."
+  [week-num]
+  week-num)
+
+(defn display-plan
+  [plan]
+  (sort-by (comp first second)
+           (map (fn [[k v]]
+                  [k (week->date (first (:next v)))])
+                plan)))
