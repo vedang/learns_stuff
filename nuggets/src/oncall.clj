@@ -1,7 +1,14 @@
 (ns oncall
   "Given one oncall rotation schedule, generate the next one."
-  (:require [java-time :as jt])
-  (:import [java.time.temporal IsoFields]))
+  (:require [clojure.edn :as edn]
+            [java-time :as jt])
+  (:import java.time.temporal.IsoFields))
+
+(def rotation-file "resources/rotation.edn")
+
+(defn read-rotation
+  [rot-file]
+  (edn/read-string (slurp rot-file)))
 
 (def prev-rotation
   "The rotation is expected to be sorted in time (on
@@ -12,119 +19,7 @@
   Re: duplicate entries. This list can contain duplicate entries (for
   simple book-keeping). However, the code only considers the latest
   entry for any person (unique on name)."
-  [{:name "Pardeep"
-    :in-next-rotation? false
-    :prev-rotation-week 32
-    :constraints []}
-   {:name "Pavitra"
-    :in-next-rotation? false
-    :prev-rotation-week 33
-    :constraints []}
-   {:name "Amogh"
-    :in-next-rotation? true
-    :prev-rotation-week 34
-    :constraints [[2 :hard :feature_work]]}
-   {:name "Daniel"
-    :in-next-rotation? true
-    :prev-rotation-week 35
-    :assist "Shantanu"
-    :constraints []}
-   {:name "Mangal"
-    :in-next-rotation? true
-    :prev-rotation-week 36
-    :assist "Shalaka"
-    :constraints []}
-   {:name "Setia"
-    :in-next-rotation? true
-    :prev-rotation-week 37
-    :assist "Mourjo"
-    :constraints []}
-   {:name "Shantanu"
-    :in-next-rotation? true
-    :prev-rotation-week 38
-    :constraints [[2 :hard :feature_work]]}
-   {:name "Suvrat"
-    :in-next-rotation? true
-    :prev-rotation-week 39
-    :constraints [[2 :hard :leave]
-                  [3 :hard :leave]
-                  [4 :hard :leave]]}
-   {:name "Somya"
-    :in-next-rotation? true
-    :prev-rotation-week 40
-    :constraints [[2 :hard :leave]]}
-   {:name "Shalaka"
-    :in-next-rotation? true
-    :prev-rotation-week 41
-    :constraints []}
-   {:name "Mourjo"
-    :in-next-rotation? true
-    :prev-rotation-week 42
-    :constraints []}
-   {:name "Vedang"
-    :in-next-rotation? false
-    :prev-rotation-week 43
-    :constraints [[1 :soft :leave]]}
-   {:name "Neha"
-    :in-next-rotation? true
-    :prev-rotation-week 44
-    :constraints []}
-   {:name "Faiz"
-    :in-next-rotation? true
-    :prev-rotation-week 45
-    :constraints []}
-   {:name "Harsh"
-    :in-next-rotation? true
-    :prev-rotation-week 46
-    :constraints [[3 :soft :leave]
-                  [4 :hard :leave]
-                  [5 :hard :leave]]}
-   {:name "Ramya"
-    :in-next-rotation? true
-    :prev-rotation-week 47
-    :constraints [[1 :soft :leave]
-                  [5 :hard :leave]
-                  [6 :hard :leave]]}
-   {:name "Samuel"
-    :in-next-rotation? true
-    :prev-rotation-week 48
-    :constraints []}
-   {:name "Rubal"
-    :in-next-rotation? true
-    :prev-rotation-week 49
-    :constraints [[1 :hard :leave]
-                  [2 :hard :leave]]}
-   {:name "Daniel"
-    :in-next-rotation? true
-    :prev-rotation-week 50
-    :constraints [[14 :hard :leave]
-                  [15 :hard :leave]
-                  [16 :hard :leave]
-                  [17 :hard :leave]]}
-   {:name "Mangal"
-    :in-next-rotation? true
-    :prev-rotation-week 51
-    :constraints []}
-   {:name "Setia"
-    :in-next-rotation? true
-    :prev-rotation-week 52
-    :constraints []}
-   {:name "Ketan"
-    :in-next-rotation? true
-    :prev-rotation-week 1
-    :constraints []}
-   {:name "Dinesh"
-    :in-next-rotation? false
-    :constraints []}
-   {:name "Narendra"
-    :in-next-rotation? true
-    :constraints []}
-   {:name "Mihil"
-    :in-next-rotation? true
-    :constraints []}
-   {:name "Pranav"
-    :in-next-rotation? true
-    :constraints []}])
+  (read-rotation rotation-file))
 
 (defn uniquify-rotation-entries
   "Keep only the latest rotation information for any person, also keep
@@ -357,6 +252,7 @@
                  (inc swap-count)))))))
 
 ;;; ========= DISPLAY Functions ==========
+
 (defn week->date
   "Given a week, convert it to a date representation (Monday to
   Monday)."
@@ -371,12 +267,32 @@
          "--"
          (jt/format "<yyyy-MM-dd EEE>" end-date))))
 
+(defn sort-plan
+  "Return a sorted array of entries in the plan, sorted on week-number
+  to be assigned to someone."
+  ;; @TODO: handle wrap-around
+  [plan]
+  (sort-by (comp first :next second)
+           plan))
+
 (defn display-plan
   "A function to take a plan and to render it in a human-readable format"
   [plan]
   (map (fn [[k v]]
-         [k (week->date v)])
-       (sort-by second
-                (map (fn [[k v]]
-                       [k (first (:next v))])
-                     plan))))
+         [k (-> v :next first week->date)])
+       (sort-plan plan)))
+
+;;; =========== STORE Functions ============
+
+(defn plan-entry->file-entry
+  [[pname pval]]
+  {:name pname
+   :in-next-rotation? true
+   :prev-rotation-week (first (:next pval))
+   :constraints []})
+
+(defn plan->rot-file-fmt
+  [plan rot-file]
+  (let [existing-data (read-rotation rot-file)
+        new-data (mapv plan-entry->file-entry (sort-plan plan))]
+    (vec (concat existing-data new-data))))
