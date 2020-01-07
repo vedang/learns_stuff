@@ -81,8 +81,11 @@
                           (keep :prev-rotation-week)
                           first
                           inc)
-        weeks-to-assign (range week-counter
-                               (+ week-counter num-weeks))
+        weeks-to-assign (if (> 52 (+ week-counter num-weeks))
+                          (range week-counter
+                                 (+ week-counter num-weeks))
+                          (concat (range week-counter 53)
+                                  (range 1 (- (+ week-counter num-weeks) 52))))
         base-plan (reduce (partial add-person-to-plan (set weeks-to-assign))
                           {}
                           unique-rotation)]
