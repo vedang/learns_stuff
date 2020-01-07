@@ -11,7 +11,7 @@
   Re: duplicate entries. This list can contain duplicate entries (for
   simple book-keeping). However, the code only considers the latest
   entry for any person (unique on name)."
-  (:require [clojure.edn :as edn]))
+  (:require [clojure.set :as cset]))
 
 (defn uniquify-rotation-entries
   "Keep only the latest rotation information for any person, also keep
@@ -61,7 +61,9 @@
                 [#{} #{}]
                 constraints)]
     (assoc plan
-           person-name (merge {:next next-values}
+           person-name (merge {:next (if (seq hard-constraints)
+                                       (cset/difference next-values hard-constraints)
+                                       next-values)}
                               (when prev-rotation
                                 {:farthest-from prev-rotation})
                               (when (seq soft-constraints)

@@ -206,7 +206,7 @@
   {"Pranav"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}},
    "Harsh"
-   {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
+   {:next #{7 20 15 13 6 17 3 12 2 19 11 9 14 16 10 18 8},
     :farthest-from 46,
     :soft-constraints #{3},
     :hard-constraints #{4 5}},
@@ -224,7 +224,7 @@
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 41},
    "Daniel"
-   {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
+   {:next #{7 20 4 13 6 3 12 2 19 11 9 5 10 18 8},
     :farthest-from 50,
     :hard-constraints #{14 15 16 17}},
    "Somya"
@@ -256,7 +256,7 @@
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 39},
    "Rubal"
-   {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
+   {:next #{7 20 4 15 13 6 17 3 12 19 11 9 5 14 16 10 18 8},
     :farthest-from 49,
     :hard-constraints #{1 2}},
    "Faiz"
@@ -273,7 +273,7 @@
            (sut/add-person-to-plan #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
                                    {}
                                    (first unique-test-rotation))))
-  (t/is (= {"Harsh" {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
+  (t/is (= {"Harsh" {:next #{7 20 15 13 6 17 3 12 2 19 11 9 14 16 10 18 8},
                      :farthest-from 46,
                      :soft-constraints #{3},
                      :hard-constraints #{4 5}}}
@@ -331,7 +331,7 @@
                                        :farthest-from 46,
                                        :soft-constraints #{3},
                                        :hard-constraints #{4 5}})
-                                 "Harsh"))
+                               "Harsh"))
   (t/is (not (sut/already-assigned? (assoc test-base-plan
                                            "Harsh"
                                            {:next #{3 7},
@@ -341,7 +341,7 @@
                                     "Harsh"))))
 
 (t/deftest test-eliminate-week
-  (t/is (= {:next #{7 20 4 15 13 6 17 12 2 19 11 9 5 14 16 10 18 8},
+  (t/is (= {:next #{7 20 15 13 6 17 12 2 19 11 9 14 16 10 18 8},
             :farthest-from 46,
             :soft-constraints #{3},
             :hard-constraints #{4 5}}
