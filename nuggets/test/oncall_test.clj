@@ -419,3 +419,11 @@
                               [k (assoc v :next #{6})]
                               [k (update v :next disj 6)]))
                           test-base-plan)))))
+
+(t/deftest test-swapper
+  (t/is (= (sut/swapper 1 [1 2 3 4 5 6])
+           [2 1 3 4 5 6]))
+  (t/is (= (sut/swapper 2 [1 2 3 4 5 6])
+           [3 1 2 4 5 6]))
+  (t/is (= (sut/swapper 3 [1 2 3 4 5 6])
+           [4 1 2 3 5 6])))
