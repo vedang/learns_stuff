@@ -62,6 +62,7 @@
                 constraints)]
     (assoc plan
            person-name (merge {:next (if (seq hard-constraints)
+                                       ;; Remove hard constraints here itself.
                                        (cset/difference next-values hard-constraints)
                                        next-values)}
                               (when prev-rotation
@@ -70,6 +71,8 @@
                                 {:soft-constraints soft-constraints})
                               (when (seq hard-constraints)
                                 {:hard-constraints hard-constraints})))))
+
+(declare assign-week eliminate-week-for-others eliminate-week)
 
 (defn fill-base-values
   "Given a unique rotation, returns a `base-plan`, a set of
@@ -90,9 +93,23 @@
                                   (range 1 (- (+ week-counter num-weeks) 52))))
         base-plan (reduce (partial add-person-to-plan (set weeks-to-assign))
                           {}
-                          unique-rotation)]
+                          unique-rotation)
+        base-plan-with-eliminations
+        (reduce (fn [new-plan [pname pval]]
+                  (if (second (:next pval))
+                    new-plan
+                    ;; Only a single value is possible for this
+                    ;; person, eliminate this value for everyone else.
+                    (if-let [plan (eliminate-week-for-others new-plan
+                                                             pname
+                                                             (first (:next pval)))]
+                      plan
+                      ;; no plan in possible
+                      (reduced nil))))
+                base-plan
+                base-plan)]
 
-    [base-plan weeks-to-assign #{}]))
+    [base-plan-with-eliminations weeks-to-assign #{}]))
 
 (defn hard-leave-constraint?
   "Is this allocation hitting a hard constraint? If so, return true."
@@ -119,13 +136,16 @@
   [curr-plan person-name]
   (= 1 (count (get-in curr-plan [person-name :next]))))
 
-(declare assign-week)
-
 (defn eliminate-week
   "Assumes that the week can be eliminated for the given person. If
   this leads to the person having only a single week left, this
   information is further propagated in the plan."
   [plan person-name week]
+  (println "Eliminate Week: ")
+  (println plan)
+  (println person-name)
+  (println week)
+  (println "========")
   (let [person-val (get plan person-name)
         curr-possibilities (:next person-val)
         new-possibilities (disj curr-possibilities week)
@@ -146,30 +166,31 @@
       :else
       new-plan)))
 
-(defn assign-week+eliminate-week-for-others
-  "We're assigning the week to the specified person. Update the plan
-  to eliminate the week for others.
+(defn eliminate-week-for-others
+  "Update the plan to eliminate the week for others.
 
   If this leaves anyone with only one other option, propagate that
   option into the plan as well."
   [curr-plan person-name week]
-  (when-let [updated-plan
-             (reduce (fn [new-plan [pname {possible-vals :next
-                                          :as pval}]]
-                       (if (= pname person-name)
-                         ;; Do nothing in this reduction, we are
-                         ;; trying to assign this week to this person
-                         ;; and using this reduction to eliminate the
-                         ;; week from everyone else.
-                         new-plan
-                         ;; Eliminate this week for everyone else.
-                         (if-let [new-plan (eliminate-week new-plan pname week)]
-                           new-plan
-                           (reduced nil))))
-                     curr-plan
-                     curr-plan)]
-    ;; This assignment is possible. Make it and return the plan.
-    (assoc-in updated-plan [person-name :next] #{week})))
+  (println "Eliminate for Others: ")
+  (println curr-plan)
+  (println person-name)
+  (println week)
+  (println "=======")
+  (reduce (fn [new-plan [pname {possible-vals :next
+                               :as pval}]]
+            (if (= pname person-name)
+              ;; Do nothing in this reduction, we are
+              ;; trying to assign this week to this person
+              ;; and using this reduction to eliminate the
+              ;; week from everyone else.
+              new-plan
+              ;; Eliminate this week for everyone else.
+              (if-let [new-plan (eliminate-week new-plan pname week)]
+                new-plan
+                (reduced nil))))
+          curr-plan
+          curr-plan))
 
 (defn assign-week
   "Trying to assign a week to a person means the following:
@@ -199,12 +220,21 @@
   ;; constraints, assignment is not possible, return nil. For soft
   ;; constraints where other options are possible, assignment is not
   ;; advised.
-  (when-not (or (hard-leave-constraint? curr-plan person-name week)
-                (soft-leave-constraint? curr-plan person-name week)
-                (already-eliminated? curr-plan person-name week))
-    ;; Assign the week to this person and eliminate the week for
-    ;; everyone else.
-    (assign-week+eliminate-week-for-others curr-plan person-name week)))
+  (println "Assign Week: ")
+  (println curr-plan)
+  (println person-name)
+  (println week)
+  (println "=======")
+  (when-not (or ;; No need to check for hard constraints, as those are
+                ;; already eliminated when filling base values.
+             (hard-leave-constraint? curr-plan person-name week)
+             (soft-leave-constraint? curr-plan person-name week)
+             (already-eliminated? curr-plan person-name week))
+    ;; Eliminate the week for everyone else and then assign the week
+    ;; to this person.
+    (some-> curr-plan
+            (eliminate-week-for-others person-name week)
+            (assoc-in [person-name :next] #{week}))))
 
 (defn swapper
   "Helper function to rotate my weeks vector.
@@ -226,7 +256,20 @@
     (loop [curr-plan base-plan
            names (map :name urot)
            weeks weeks-to-assign
-           swap-count 1]
+           swap-counter 1
+           loop-counter (* 2 (count urot))]
+      (println "Next Rot Loop")
+      (println curr-plan)
+      (println names)
+      (println weeks)
+      (println swap-counter)
+      (println loop-counter)
+      (println "=======")
+      (when (= 0 loop-counter)
+        (throw (ex-info "Exiting this thing"
+                        {:plan curr-plan
+                         :names names
+                         :weeks weeks})))
       (cond
         ;; Everyone has been assigned a week
         (empty? names) curr-plan
@@ -236,17 +279,18 @@
 
         ;; Some week is already assigned to this person
         (already-assigned? curr-plan (first names))
-        (recur curr-plan (rest names) weeks 1)
+        (recur curr-plan (rest names) weeks 1 (dec loop-counter))
 
         :else
         (if-let [new-plan (assign-week curr-plan (first names) (first weeks))]
           ;; Assignment was successful, move to the next assignment.
-          (recur new-plan (rest names) (rest weeks) 1)
-          ;; Assignment was unsuccessful, try the next week.
+          (recur new-plan (rest names) (rest weeks) 1 (dec loop-counter))
+          ;; Assignment was unsuccessful, swap weeks and try again.
           (recur curr-plan
                  names
-                 (swapper swap-count weeks)
-                 (inc swap-count)))))))
+                 (swapper swap-counter weeks)
+                 (inc swap-counter)
+                 (dec loop-counter)))))))
 
 ;;; How to run this program
 (comment

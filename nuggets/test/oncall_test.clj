@@ -429,49 +429,61 @@
            [4 1 2 3 5 6])))
 
 
-;; (t/deftest test-next-rotation
-;;   ;; Working
-;;   (let [base-rotation [{:name "Harsh"
-;;                         :in-next-rotation? true
-;;                         :prev-rotation-week 50
-;;                         :constraints [[3 :soft :leave]
-;;                                       [4 :hard :leave]
-;;                                       [5 :hard :leave]]}
-;;                        {:name "Ramya"
-;;                         :in-next-rotation? true
-;;                         :prev-rotation-week 51
-;;                         :constraints [[1 :soft :leave]
-;;                                       [5 :hard :leave]
-;;                                       [6 :hard :leave]]}
-;;                        {:name "Samuel"
-;;                         :in-next-rotation? true
-;;                         :prev-rotation-week 52
-;;                         :constraints []}
-;;                        {:name "Pranav"
-;;                         :in-next-rotation? true
-;;                         :constraints [[1 :hard :leave]
-;;                                       [2 :hard :leave]]}]]
-;;     (sut/next-rotation base-rotation))
-;;   ;; Failing
-;;   (let [base-rotation [{:name "Harsh"
-;;                         :in-next-rotation? true
-;;                         :prev-rotation-week 49
-;;                         :constraints [[52 :hard :leave]
-;;                                       [1 :hard :leave]
-;;                                       [2 :hard :leave]]}
-;;                        {:name "Ramya"
-;;                         :in-next-rotation? true
-;;                         :prev-rotation-week 50
-;;                         :constraints [[1 :soft :leave]
-;;                                       [3 :soft :leave]
-;;                                       [4 :hard :leave]]}
-;;                        {:name "Samuel"
-;;                         :in-next-rotation? true
-;;                         :prev-rotation-week 51
-;;                         :constraints [[1 :soft :leave]
-;;                                       [2 :hard :leave]]}
-;;                        {:name "Pranav"
-;;                         :in-next-rotation? true
-;;                         :constraints [[1 :hard :leave]
-;;                                       [2 :hard :leave]]}]]
-;;     (sut/next-rotation base-rotation)))
+(t/deftest test-next-rotation
+  (let [base-rotation [{:name "Harsh"
+                        :in-next-rotation? true
+                        :prev-rotation-week 50
+                        :constraints [[3 :soft :leave]
+                                      [4 :hard :leave]
+                                      [5 :hard :leave]]}
+                       {:name "Ramya"
+                        :in-next-rotation? true
+                        :prev-rotation-week 51
+                        :constraints [[1 :soft :leave]
+                                      [5 :hard :leave]
+                                      [6 :hard :leave]]}
+                       {:name "Samuel"
+                        :in-next-rotation? true
+                        :prev-rotation-week 52
+                        :constraints []}
+                       {:name "Pranav"
+                        :in-next-rotation? true
+                        :constraints [[1 :hard :leave]
+                                      [2 :hard :leave]]}]]
+    (t/is (= (sut/next-rotation base-rotation)
+             {"Harsh"
+              {:next #{1},
+               :farthest-from 50,
+               :soft-constraints #{3},
+               :hard-constraints #{4 5}},
+              "Ramya"
+              {:next #{2},
+               :farthest-from 51,
+               :soft-constraints #{1},
+               :hard-constraints #{6 5}},
+              "Samuel" {:next #{3}, :farthest-from 52},
+              "Pranav" {:next #{4}, :hard-constraints #{1 2}}})))
+  ;; Failing
+  ;; (let [base-rotation [{:name "Harsh"
+  ;;                       :in-next-rotation? true
+  ;;                       :prev-rotation-week 49
+  ;;                       :constraints [[52 :hard :leave]
+  ;;                                     [1 :hard :leave]
+  ;;                                     [2 :hard :leave]]}
+  ;;                      {:name "Ramya"
+  ;;                       :in-next-rotation? true
+  ;;                       :prev-rotation-week 50
+  ;;                       :constraints [[1 :soft :leave]
+  ;;                                     [3 :soft :leave]
+  ;;                                     [4 :hard :leave]]}
+  ;;                      {:name "Samuel"
+  ;;                       :in-next-rotation? true
+  ;;                       :prev-rotation-week 51
+  ;;                       :constraints [[1 :soft :leave]
+  ;;                                     [2 :hard :leave]]}
+  ;;                      {:name "Pranav"
+  ;;                       :in-next-rotation? true
+  ;;                       :constraints [[1 :hard :leave]
+  ;;                                     [2 :hard :leave]]}]]
+  ;;   (sut/next-rotation base-rotation))
+  )
