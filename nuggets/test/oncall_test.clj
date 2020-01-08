@@ -202,6 +202,29 @@
     :in-next-rotation? true
     :constraints []}])
 
+(def unique-test-rotation-2
+  [{:name "Harsh"
+    :in-next-rotation? true
+    :prev-rotation-week 49
+    :constraints [[52 :hard :leave]
+                  [1 :hard :leave]
+                  [2 :hard :leave]]}
+   {:name "Ramya"
+    :in-next-rotation? true
+    :prev-rotation-week 50
+    :constraints [[1 :soft :leave]
+                  [3 :soft :leave]
+                  [4 :hard :leave]]}
+   {:name "Samuel"
+    :in-next-rotation? true
+    :prev-rotation-week 51
+    :constraints [[1 :soft :leave]
+                  [2 :hard :leave]]}
+   {:name "Pranav"
+    :in-next-rotation? true
+    :constraints [[1 :hard :leave]
+                  [2 :hard :leave]]}])
+
 (def test-base-plan
   {"Pranav"
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}},
@@ -263,6 +286,22 @@
    {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8},
     :farthest-from 45}})
 
+(def test-base-plan-2
+  {"Harsh"
+   {:next #{3}, :farthest-from 49, :hard-constraints #{1 2 52}},
+   "Ramya"
+   {:next #{52 1 2 3},
+    :farthest-from 50,
+    :soft-constraints #{1 3},
+    :hard-constraints #{4}},
+   "Samuel"
+   {:next #{52 1 3},
+    :farthest-from 51,
+    :soft-constraints #{1},
+    :hard-constraints #{2}},
+   "Pranav" {:next #{52 3},
+             :hard-constraints #{1 2}}})
+
 (t/deftest test-uniquify-rotation-entries
   (t/is (= unique-test-rotation
            (sut/uniquify-rotation-entries test-rotation))))
@@ -285,10 +324,57 @@
   (let [res (sut/fill-base-values unique-test-rotation)]
     (t/is (= res
              [test-base-plan
-              '(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)
-              #{}]))
+              '(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)]))
     (t/is (= (count unique-test-rotation)
+             (count (second res)))))
+
+  (let [res (sut/fill-base-values unique-test-rotation-2)]
+    (t/is (= res
+             [test-base-plan-2
+              '(52 1 2 3)]))
+    (t/is (= (count unique-test-rotation-2)
              (count (second res))))))
+
+(t/deftest test-optimize-base-values
+  (t/is (= [test-base-plan '(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)]
+           (sut/optimize-base-values test-base-plan
+                                     '(2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20))))
+  (t/is (= [{"Harsh"
+              {:next #{3},
+               :farthest-from 49,
+               :hard-constraints #{1 2 52}},
+              "Ramya"
+              {:next #{2},
+               :farthest-from 50,
+               :soft-constraints #{1 3},
+               :hard-constraints #{4}},
+              "Samuel"
+              {:next #{1},
+               :farthest-from 51,
+               :soft-constraints #{1},
+               :hard-constraints #{2}},
+              "Pranav"
+              {:next #{52},
+               :hard-constraints #{1 2}}}
+            '()]
+           (sut/optimize-base-values test-base-plan-2 '(52 1 2 3))))
+  ;; conflicting assignment, both Harsh and Pranav need 3
+  (t/is (nil? (sut/optimize-base-values
+               (update-in test-base-plan-2
+                          ["Pranav" :hard-constraints]
+                          conj
+                          52)
+               '(52 1 2 3))))
+  ;; no possible week for Harsh
+  (t/is (nil? (sut/optimize-base-values
+               (-> test-base-plan-2
+                   (update-in ["Harsh" :hard-constraints]
+                              conj
+                              3)
+                   (update-in ["Harsh" :next]
+                              disj
+                              3))
+               '(52 1 2 3)))))
 
 (t/deftest test-hard-leave-constraint?
   (t/is (sut/hard-leave-constraint? test-base-plan "Harsh" 4))
@@ -382,23 +468,6 @@
                                 3)]
     (t/is (= #{6} (get-in res ["Harsh" :next])))))
 
-(t/deftest test-assign-week+eliminate-week-for-others
-  (let [res (sut/assign-week+eliminate-week-for-others
-             (assoc test-base-plan
-                    "Harsh"
-                    {:next #{3 6}
-                     :farthest-from 46
-                     :soft-constraints #{3}
-                     :hard-constraints #{4 5}}
-                    "Faiz"
-                    {:next #{3 6}
-                     :farthest-from 45})
-             "Harsh"
-             6)]
-    (t/is (= #{6} (get-in res ["Harsh" :next])))
-    (t/is (= #{3} (get-in res ["Faiz" :next])))
-    (t/is (nil? (some #{3 6} (get-in res ["Mourjo" :next]))))))
-
 (t/deftest test-assign-week
   ;; soft constraint
   (t/is (nil? (sut/assign-week test-base-plan "Harsh" 3)))
@@ -412,12 +481,30 @@
                                        :farthest-from 45})
                                "Harsh"
                                6)))
+  ;; check elimination in others
   (t/is (= (sut/assign-week test-base-plan "Harsh" 6)
            (apply hash-map
                   (mapcat (fn [[k v]]
                             (if (= k "Harsh")
                               [k (assoc v :next #{6})]
                               [k (update v :next disj 6)]))
+                          test-base-plan))))
+  ;; check propagation
+  (t/is (= (sut/assign-week (assoc test-base-plan
+                                   "Faiz"
+                                   {:next #{6 4},
+                                    :farthest-from 45})
+                            "Harsh"
+                            6)
+           (apply hash-map
+                  (mapcat (fn [[k v]]
+                            (cond
+                              (= k "Harsh")
+                              [k (assoc v :next #{6})]
+                              (= k "Faiz")
+                              [k (assoc v :next #{4})]
+                              :else
+                              [k (update v :next disj 6 4)]))
                           test-base-plan)))))
 
 (t/deftest test-swapper
@@ -463,27 +550,80 @@
                :hard-constraints #{6 5}},
               "Samuel" {:next #{3}, :farthest-from 52},
               "Pranav" {:next #{4}, :hard-constraints #{1 2}}})))
+
+  (let [base-rotation [{:name "Harsh"
+                        :in-next-rotation? true
+                        :prev-rotation-week 49
+                        :constraints [[52 :hard :leave]
+                                      [1 :hard :leave]
+                                      [2 :hard :leave]]}
+                       {:name "Ramya"
+                        :in-next-rotation? true
+                        :prev-rotation-week 50
+                        :constraints [[1 :soft :leave]
+                                      [3 :soft :leave]
+                                      [4 :hard :leave]]}
+                       {:name "Samuel"
+                        :in-next-rotation? true
+                        :prev-rotation-week 51
+                        :constraints [[1 :soft :leave]
+                                      [2 :hard :leave]]}
+                       {:name "Pranav"
+                        :in-next-rotation? true
+                        :constraints [[1 :hard :leave]
+                                      [2 :hard :leave]]}]]
+    (t/is (= (sut/next-rotation base-rotation)
+             {"Harsh"
+              {:next #{3}, :farthest-from 49, :hard-constraints #{1 2 52}},
+              "Ramya"
+              {:next #{2},
+               :farthest-from 50,
+               :soft-constraints #{1 3},
+               :hard-constraints #{4}},
+              "Samuel"
+              {:next #{1},
+               :farthest-from 51,
+               :soft-constraints #{1},
+               :hard-constraints #{2}},
+              "Pranav" {:next #{52}, :hard-constraints #{1 2}}})))
+
+  (let [base-rotation [{:name "Samuel"
+                        :in-next-rotation? true
+                        :prev-rotation-week 51
+                        :constraints [[1 :soft :leave]]}
+                       {:name "Pranav"
+                        :in-next-rotation? true
+                        :constraints [[52 :soft :leave]]}]]
+    (t/is (= (sut/next-rotation base-rotation)
+             {"Samuel"
+              {:next #{52},
+               :farthest-from 51,
+               :soft-constraints #{1}},
+              "Pranav" {:next #{1}, :soft-constraints #{52}}})))
+
+  (let [base-rotation [{:name "Samuel"
+                        :in-next-rotation? true
+                        :prev-rotation-week 51
+                        :constraints [[52 :soft :leave]]}
+                       {:name "Pranav"
+                        :in-next-rotation? true
+                        :constraints [[52 :soft :leave]]}]]
+    (t/is (= (sut/next-rotation base-rotation)
+             {"Samuel"
+              {:next #{1},
+               :farthest-from 51,
+               :soft-constraints #{52}},
+              "Pranav" {:next #{52}, :soft-constraints #{52}}})))
+
   ;; Failing
-  ;; (let [base-rotation [{:name "Harsh"
-  ;;                       :in-next-rotation? true
-  ;;                       :prev-rotation-week 49
-  ;;                       :constraints [[52 :hard :leave]
-  ;;                                     [1 :hard :leave]
-  ;;                                     [2 :hard :leave]]}
-  ;;                      {:name "Ramya"
-  ;;                       :in-next-rotation? true
-  ;;                       :prev-rotation-week 50
-  ;;                       :constraints [[1 :soft :leave]
-  ;;                                     [3 :soft :leave]
-  ;;                                     [4 :hard :leave]]}
-  ;;                      {:name "Samuel"
+  ;; (let [base-rotation [{:name "Samuel"
   ;;                       :in-next-rotation? true
   ;;                       :prev-rotation-week 51
-  ;;                       :constraints [[1 :soft :leave]
-  ;;                                     [2 :hard :leave]]}
+  ;;                       :constraints [[52 :soft :leave]
+  ;;                                     [1 :soft :leave]]}
   ;;                      {:name "Pranav"
   ;;                       :in-next-rotation? true
-  ;;                       :constraints [[1 :hard :leave]
-  ;;                                     [2 :hard :leave]]}]]
+  ;;                       :constraints [[52 :soft :leave]
+  ;;                                     [1 :soft :leave]]}]]
   ;;   (sut/next-rotation base-rotation))
   )

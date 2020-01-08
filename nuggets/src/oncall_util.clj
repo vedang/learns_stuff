@@ -1,7 +1,8 @@
 (ns oncall-util
   (:require [clojure.edn :as edn]
             [java-time :as jt])
-  (:import java.time.temporal.IsoFields))
+  (:import java.time.DayOfWeek
+           [java.time.temporal IsoFields TemporalAdjusters]))
 
 (defn read-rotation
   [rot-file]
@@ -15,9 +16,9 @@
   [week-num]
   (assert (>= 52 week-num 1)
           "Valid value for week is between 1 and 52")
-  (let [start-date (.with (jt/local-date)
-                          IsoFields/WEEK_OF_WEEK_BASED_YEAR
-                          week-num)
+  (let [start-date (.. (jt/local-date)
+                       (with IsoFields/WEEK_OF_WEEK_BASED_YEAR week-num)
+                       (with (. TemporalAdjusters (previousOrSame DayOfWeek/MONDAY))))
         end-date (jt/plus start-date (jt/days 7))]
     (str (jt/format "<yyyy-MM-dd EEE>" start-date)
          "--"

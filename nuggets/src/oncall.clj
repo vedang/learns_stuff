@@ -13,6 +13,17 @@
   entry for any person (unique on name)."
   (:require [clojure.set :as cset]))
 
+(def ^:dynamic *debug-flag*
+  "Flag to print debug information"
+  nil)
+
+(defn debug!
+  [& args]
+  (when *debug-flag*
+    (doseq [a args]
+      (println a))
+    (println "=======")))
+
 (defn uniquify-rotation-entries
   "Keep only the latest rotation information for any person, also keep
   only those people who will participate in the next rotation."
@@ -49,28 +60,36 @@
 
 (defn add-person-to-plan
   "Given a plan and a person object, add the relevant details of the
-  person to the plan."
+  person to the plan. Remove any hard constraints from the set of
+  possibilities here itself, if a direct assignment is made, make it
+  here itself."
   [next-values plan {person-name :name
                      prev-rotation :prev-rotation-week
-                     constraints :constraints}]
+                     constraints :constraints
+                     fixed-next :manually-set-next-rotation}]
   (let [[soft-constraints hard-constraints]
         (reduce (fn [[sc hc] [cweek ctype _]]
                   (if (= ctype :soft)
                     [(conj sc cweek) hc]
                     [sc (conj hc cweek)]))
                 [#{} #{}]
-                constraints)]
-    (assoc plan
-           person-name (merge {:next (if (seq hard-constraints)
-                                       ;; Remove hard constraints here itself.
-                                       (cset/difference next-values hard-constraints)
-                                       next-values)}
-                              (when prev-rotation
-                                {:farthest-from prev-rotation})
-                              (when (seq soft-constraints)
-                                {:soft-constraints soft-constraints})
-                              (when (seq hard-constraints)
-                                {:hard-constraints hard-constraints})))))
+                constraints)
+        person-details
+        (merge {:next (cond
+                        ;; We have a pre-decided week for this person
+                        fixed-next #{fixed-next}
+                        ;; Remove hard constraints here itself.
+                        (seq hard-constraints)
+                        (cset/difference next-values hard-constraints)
+                        ;; All given possibilities are possible
+                        :else next-values)}
+               (when prev-rotation
+                 {:farthest-from prev-rotation})
+               (when (seq soft-constraints)
+                 {:soft-constraints soft-constraints})
+               (when (seq hard-constraints)
+                 {:hard-constraints hard-constraints}))]
+    (assoc plan person-name person-details)))
 
 (declare assign-week eliminate-week-for-others eliminate-week)
 
@@ -93,23 +112,55 @@
                                   (range 1 (- (+ week-counter num-weeks) 52))))
         base-plan (reduce (partial add-person-to-plan (set weeks-to-assign))
                           {}
-                          unique-rotation)
-        base-plan-with-eliminations
-        (reduce (fn [new-plan [pname pval]]
-                  (if (second (:next pval))
-                    new-plan
-                    ;; Only a single value is possible for this
-                    ;; person, eliminate this value for everyone else.
-                    (if-let [plan (eliminate-week-for-others new-plan
-                                                             pname
-                                                             (first (:next pval)))]
-                      plan
-                      ;; no plan in possible
-                      (reduced nil))))
-                base-plan
-                base-plan)]
+                          unique-rotation)]
+    [base-plan weeks-to-assign]))
 
-    [base-plan-with-eliminations weeks-to-assign #{}]))
+(defn optimize-base-values
+  "When we fill base values:
+
+  1) The base plan itself might be invalid. (eg: some person has hard
+  constraints against every week, and therefore the `next` set is
+  empty.
+
+  2) The base plan might have weeks already assigned to certain
+  people. eg: hard constraints only leave a single choice, or we've
+  predetermined a week for someone manually. In this case, we need to
+  eliminate this option from other folks possible values and from
+  weeks we will attempt to assign.
+
+  Take care of these conditions. Return the optimized `base-plan` and
+  optimized `weeks-to-assign`, or `nil` if the given configuration is
+  invalid."
+  [base-plan weeks-to-assign]
+  (debug! "Optimize Base Values:" base-plan weeks-to-assign)
+  (when-let [opt-plan
+             (reduce (fn [new-plan [pname pval]]
+                       (cond
+                         ;; More than one possible value exists for the person
+                         (second (:next pval))
+                         new-plan
+                         ;; Only a single value is possible for this
+                         ;; person, eliminate this value for everyone else.
+                         (first (:next pval))
+                         (if-let [plan (eliminate-week-for-others new-plan
+                                                                  pname
+                                                                  (first (:next pval)))]
+                           plan
+                           ;; no plan in possible
+                           (reduced nil))
+                         ;; No value exists for this person, this plan is not possible
+                         :else (reduced nil)))
+                     base-plan
+                     base-plan)]
+    (let [opt-week-set
+          (reduce (fn [ws [pname pval]]
+                    (if (second (:next pval))
+                      ;; nothing to eliminate from weeks-to-assign
+                      ws
+                      (disj ws (first (:next pval)))))
+                  (set weeks-to-assign)
+                  opt-plan)]
+      [opt-plan (filter opt-week-set weeks-to-assign)])))
 
 (defn hard-leave-constraint?
   "Is this allocation hitting a hard constraint? If so, return true."
@@ -141,11 +192,7 @@
   this leads to the person having only a single week left, this
   information is further propagated in the plan."
   [plan person-name week]
-  (println "Eliminate Week: ")
-  (println plan)
-  (println person-name)
-  (println week)
-  (println "========")
+  (debug! "Eliminate Week:" plan person-name week)
   (let [person-val (get plan person-name)
         curr-possibilities (:next person-val)
         new-possibilities (disj curr-possibilities week)
@@ -172,11 +219,7 @@
   If this leaves anyone with only one other option, propagate that
   option into the plan as well."
   [curr-plan person-name week]
-  (println "Eliminate for Others: ")
-  (println curr-plan)
-  (println person-name)
-  (println week)
-  (println "=======")
+  (debug! "Eliminate for Others:" curr-plan person-name week)
   (reduce (fn [new-plan [pname {possible-vals :next
                                :as pval}]]
             (if (= pname person-name)
@@ -220,13 +263,10 @@
   ;; constraints, assignment is not possible, return nil. For soft
   ;; constraints where other options are possible, assignment is not
   ;; advised.
-  (println "Assign Week: ")
-  (println curr-plan)
-  (println person-name)
-  (println week)
-  (println "=======")
-  (when-not (or ;; No need to check for hard constraints, as those are
-                ;; already eliminated when filling base values.
+  (debug! "Assign Week:" curr-plan person-name week)
+  (when-not (or ;; @TODO: No need to check for hard constraints, as
+                ;; those are already eliminated when filling base
+                ;; values.
              (hard-leave-constraint? curr-plan person-name week)
              (soft-leave-constraint? curr-plan person-name week)
              (already-eliminated? curr-plan person-name week))
@@ -244,53 +284,64 @@
   into the next position (effectively dropping it for this person, but
   keeping it the first week for the next person)"
   [swap-count coll]
+  (debug! "Swapper:" swap-count coll)
   (let [drop-seq (drop swap-count coll)
         take-seq (take swap-count coll)
         head (take 1 drop-seq)]
     (lazy-cat head take-seq (drop 1 drop-seq))))
 
+(defn generate-plan
+  "Given an optimized `base-plan`, a list of people-names and a list
+  of weeks, return the oncall schedule. Takes a `num-attempts` counter
+  to determine how many times to attempt generating the plan before
+  giving up. If not provided, it is equal to the number of people we
+  are trying to assign a schedule to. On giving up, throws an
+  exception."
+  ([plan names weeks num-attempts]
+   (generate-plan plan names weeks num-attempts 1))
+  ([plan names weeks num-attempts swapper-count]
+   (debug! "Generate Plan:" plan names weeks num-attempts swapper-count)
+   (when (= 0 num-attempts)
+     (throw (ex-info "Exiting `generate-plan`, please review manually."
+                     {:plan plan
+                      :names names
+                      :weeks weeks})))
+   (cond
+     ;; Everyone has been assigned a week
+     (empty? names) plan
+
+     ;; All available weeks have been assigned
+     (empty? weeks) plan
+
+     ;; Some week is already assigned to this person
+     (already-assigned? plan (first names))
+     (generate-plan plan (rest names) weeks num-attempts)
+
+     :else
+     (if-let [new-plan (assign-week plan (first names) (first weeks))]
+       ;; Assignment was successful, move to the next assignment.
+       (generate-plan new-plan (rest names) (rest weeks) num-attempts)
+       ;; Assignment was unsuccessful, swap weeks and try again.
+       (recur plan
+              names
+              (swapper swapper-count weeks)
+              (dec num-attempts)
+              (inc swapper-count))))))
+
 (defn next-rotation
   [rotation]
   (let [urot (uniquify-rotation-entries rotation)
-        [base-plan weeks-to-assign assigned-weeks] (fill-base-values urot)]
-    (loop [curr-plan base-plan
-           names (map :name urot)
-           weeks weeks-to-assign
-           swap-counter 1
-           loop-counter (* 2 (count urot))]
-      (println "Next Rot Loop")
-      (println curr-plan)
-      (println names)
-      (println weeks)
-      (println swap-counter)
-      (println loop-counter)
-      (println "=======")
-      (when (= 0 loop-counter)
-        (throw (ex-info "Exiting this thing"
-                        {:plan curr-plan
-                         :names names
-                         :weeks weeks})))
-      (cond
-        ;; Everyone has been assigned a week
-        (empty? names) curr-plan
-
-        ;; All available weeks have been assigned
-        (empty? weeks) curr-plan
-
-        ;; Some week is already assigned to this person
-        (already-assigned? curr-plan (first names))
-        (recur curr-plan (rest names) weeks 1 (dec loop-counter))
-
-        :else
-        (if-let [new-plan (assign-week curr-plan (first names) (first weeks))]
-          ;; Assignment was successful, move to the next assignment.
-          (recur new-plan (rest names) (rest weeks) 1 (dec loop-counter))
-          ;; Assignment was unsuccessful, swap weeks and try again.
-          (recur curr-plan
-                 names
-                 (swapper swap-counter weeks)
-                 (inc swap-counter)
-                 (dec loop-counter)))))))
+        [base-plan weeks-to-assign] (fill-base-values urot)]
+    (if-let [ret (optimize-base-values base-plan weeks-to-assign)]
+      (generate-plan (first ret) ; the starter plan according to our rotation
+                     (map :name urot) ; Names that we need to assign weeks to
+                     (second ret) ; The week numbers eligible for assignment
+                     (count urot) ; Number of attempts we want to try
+                                  ; to generate the plan
+                     )
+      ;; No plan is possible.
+      (do (println "No plan is possible for the given constraints. Printing base-plan and exiting.")
+          base-plan))))
 
 ;;; How to run this program
 (comment
@@ -299,4 +350,12 @@
   (-> rotation-file
       ou/read-rotation
       next-rotation
-      ou/display-plan))
+      ou/display-plan)
+  ;; If you want to see what is happening.
+  (alter-var-root #'*debug-flag* (constantly true))
+  ;; To generate new data for the rotation file (which you will need
+  ;; for the next time you want to get a new schedule)
+  (-> rotation-file
+      ou/read-rotation
+      next-rotation
+      (ou/plan->rot-file-fmt rotation-file)))

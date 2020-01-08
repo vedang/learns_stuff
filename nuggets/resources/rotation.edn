@@ -28,7 +28,8 @@
  {:name "Shantanu"
   :in-next-rotation? true
   :prev-rotation-week 38
-  :constraints [[2 :hard :feature_work]]}
+  :constraints [[2 :hard :feature_work]]
+  :manually-set-next-rotation 3}
  {:name "Suvrat"
   :in-next-rotation? true
   :prev-rotation-week 39
