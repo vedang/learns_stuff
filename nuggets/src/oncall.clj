@@ -442,6 +442,14 @@
                     [sc (conj hc cweek)]))
                 [#{} #{}]
                 constraints)
+        ;; For any person, try and keep the next rotation this far
+        ;; away from the current rotation.
+        ideal-distance (count next-values)
+        ;; For this person, does the week-num wrap around? Eg: if
+        ;; `prev-rotation` was 40 and `ideal-distance` is 20, then the
+        ;; ideal next week is 8 (in the next year). This is a case of
+        ;; wrap around.
+        week-wrap-around? (> ((fnil + 0) prev-rotation ideal-distance) 52)
         person-details
         (merge {:next (cond
                         ;; We have a pre-decided week for this person
@@ -450,9 +458,14 @@
                         (seq hard-constraints)
                         (cset/difference next-values hard-constraints)
                         ;; All given possibilities are possible
-                        :else next-values)}
+                        :else next-values)
+                :ideal-distance ideal-distance
+                :week-wrap-around? week-wrap-around?}
                (when prev-rotation
-                 {:farthest-from prev-rotation})
+                 {:prev prev-rotation
+                  :ideal-week (if (> (+ prev-rotation ideal-distance) 52)
+                                (- (+ prev-rotation ideal-distance) 52)
+                                (+ prev-rotation ideal-distance))})
                (when (seq soft-constraints)
                  {:soft-constraints soft-constraints})
                (when (seq hard-constraints)
@@ -496,11 +509,11 @@
   eliminate this option from other folks possible values and from
   weeks we will attempt to assign.
 
-  Take care of these conditions. Return the optimized `base-plan` and
-  optimized `weeks-to-assign`, or `nil` if the given configuration is
-  invalid."
-  [base-plan weeks-to-assign]
-  (debug! "Optimize Base Values:" base-plan weeks-to-assign)
+  Take care of these conditions. Return the `optimized-plan`,
+  `names-needing-assignment` and `weeks-to-assign`, or `nil` if the
+  given configuration is invalid."
+  [base-plan names-needing-assignment weeks-to-assign]
+  (debug! "Optimize Base Values:" base-plan names-needing-assignment weeks-to-assign)
   (when-let [opt-plan
              (reduce (fn [new-plan [pname pval]]
                        (cond
@@ -520,40 +533,44 @@
                          :else (reduced nil)))
                      base-plan
                      base-plan)]
-    (let [opt-week-set
-          (reduce (fn [ws [pname pval]]
+    (let [[opt-name-set opt-week-set]
+          (reduce (fn [[nns ws] [pname pval]]
                     (if (second (:next pval))
-                      ;; nothing to eliminate from weeks-to-assign
-                      ws
-                      (disj ws (first (:next pval)))))
-                  (set weeks-to-assign)
+                      ;; nothing to eliminate from our lists
+                      [nns ws]
+                      [(disj nns pname) (disj ws (first (:next pval)))]))
+                  [(set names-needing-assignment) (set weeks-to-assign)]
                   opt-plan)]
-      [opt-plan (filter opt-week-set weeks-to-assign)])))
-
-(defn hard-leave-constraint?
-  "Is this allocation hitting a hard constraint? If so, return true."
-  [curr-plan person-name week]
-  (and (get-in curr-plan [person-name :hard-constraints])
-       ((get-in curr-plan [person-name :hard-constraints]) week)))
+      [opt-plan
+       (filter opt-name-set names-needing-assignment)
+       (filter opt-week-set weeks-to-assign)])))
 
 (defn soft-leave-constraint?
   "Is this allocation hitting a soft constraint? If so, return true."
-  [curr-plan person-name week]
-  (and (get-in curr-plan [person-name :soft-constraints])
-       ((get-in curr-plan [person-name :soft-constraints]) week)
+  [plan person-name week]
+  (and (get-in plan [person-name :soft-constraints])
+       ((get-in plan [person-name :soft-constraints]) week)
        ;; other assignment options are currently possible
-       (> (count (get-in curr-plan [person-name :next])) 1)))
+       (> (count (get-in plan [person-name :next])) 1)))
 
 (defn already-eliminated?
   "Return true if this allocation is already eliminated for the person."
-  [curr-plan person-name week]
-  (not ((get-in curr-plan [person-name :next]) week)))
+  [plan person-name week]
+  (not ((get-in plan [person-name :next]) week)))
 
 (defn already-assigned?
   "Return true if this person only has a single week in their next
   slot (meaning that allocation is already done for the person)."
-  [curr-plan person-name]
-  (= 1 (count (get-in curr-plan [person-name :next]))))
+  [plan person-name]
+  (= 1 (count (get-in plan [person-name :next]))))
+
+(defn get-assigned-week
+  "Return the week-number if this person only has a single week in their
+  next slot (meaning that allocation is already done for the person).
+  Else return nil."
+  [plan person-name]
+  (when (= 1 (count (get-in plan [person-name :next])))
+    (first (get-in plan [person-name :next]))))
 
 (defn eliminate-week
   "Assumes that the week can be eliminated for the given person. If
@@ -582,26 +599,18 @@
       new-plan)))
 
 (defn eliminate-week-for-others
-  "Update the plan to eliminate the week for others.
+  "For every person other than the one specifically mentioned, try and
+  eliminate the week from the given plan.
 
   If this leaves anyone with only one other option, propagate that
   option into the plan as well."
-  [curr-plan person-name week]
-  (debug! "Eliminate for Others:" curr-plan person-name week)
-  (reduce (fn [new-plan [pname {possible-vals :next
-                               :as pval}]]
-            (if (= pname person-name)
-              ;; Do nothing in this reduction, we are
-              ;; trying to assign this week to this person
-              ;; and using this reduction to eliminate the
-              ;; week from everyone else.
-              new-plan
-              ;; Eliminate this week for everyone else.
-              (if-let [new-plan (eliminate-week new-plan pname week)]
-                new-plan
-                (reduced nil))))
-          curr-plan
-          curr-plan))
+  [plan person-name week]
+  (debug! "Eliminate for Others:" plan person-name week)
+  (reduce (fn [new-plan [pname _]]
+            (or (eliminate-week new-plan pname week)
+                (reduced nil)))
+          plan
+          (dissoc plan person-name)))
 
 (defn assign-week
   "Trying to assign a week to a person means the following:
@@ -609,54 +618,29 @@
   1. Check if this is a valid assignment (the next vector contains
   this week).
 
-  2. Check if there is a hard constraint against this person for this
-  week. In this case, assignment is not possible.
-
-  3. Check if there is a soft constraint against this person for this
+  2. Check if there is a soft constraint against this person for this
   week. In this case, if there are other options available, consider
-  the assignment as not possible. There is an obvious bug in this
-  logic, in that some other hard constraint might knock out the
-  assignment we've made later. I'll think about this later.
+  the assignment as not possible.
 
   4. Remove that week as a possibility for everyone else. If it's the
   last valid week for someone else, then removing it is not possible,
   meaning that this assignment is not possible.
 
-  If the assignment is made, propagate it to everyone else.
-
   If the assignment is not possible, return nil, else return the
   fully modified plan."
-  [curr-plan person-name week]
-  ;; Check hard and soft constraints against allocation. For hard
-  ;; constraints, assignment is not possible, return nil. For soft
-  ;; constraints where other options are possible, assignment is not
-  ;; advised.
-  (debug! "Assign Week:" curr-plan person-name week)
-  (when-not (or ;; @TODO: No need to check for hard constraints, as
+  [plan person-name week & {:keys [ignore-soft-constraint?]}]
+  (debug! "Assign Week:" plan person-name week)
+  (when-not (or ;; No need to check for hard constraints, as
                 ;; those are already eliminated when filling base
                 ;; values.
-             (hard-leave-constraint? curr-plan person-name week)
-             (soft-leave-constraint? curr-plan person-name week)
-             (already-eliminated? curr-plan person-name week))
+             (and (not ignore-soft-constraint?)
+                  (soft-leave-constraint? plan person-name week))
+             (already-eliminated? plan person-name week))
     ;; Eliminate the week for everyone else and then assign the week
     ;; to this person.
-    (some-> curr-plan
+    (some-> plan
             (eliminate-week-for-others person-name week)
             (assoc-in [person-name :next] #{week}))))
-
-(defn swapper
-  "Helper function to rotate my weeks vector.
-  Use-case: The weeks vector is sorted in the order in which it should
-  assign weeks. If a given week is not possible for someone, the
-  immediate next week should be tried, and this week should be moved
-  into the next position (effectively dropping it for this person, but
-  keeping it the first week for the next person)"
-  [swap-count coll]
-  (debug! "Swapper:" swap-count coll)
-  (let [drop-seq (drop swap-count coll)
-        take-seq (take swap-count coll)
-        head (take 1 drop-seq)]
-    (lazy-cat head take-seq (drop 1 drop-seq))))
 
 (defn generate-plan
   "Given an optimized `base-plan`, a list of people-names and a list
@@ -665,48 +649,95 @@
   giving up. If not provided, it is equal to the number of people we
   are trying to assign a schedule to. On giving up, throws an
   exception."
-  ([plan names weeks num-attempts]
-   (generate-plan plan names weeks num-attempts 1))
-  ([plan names weeks num-attempts swapper-count]
-   (debug! "Generate Plan:" plan names weeks num-attempts swapper-count)
-   (when (= 0 num-attempts)
-     (throw (ex-info "Exiting `generate-plan`, please review manually."
-                     {:plan plan
-                      :names names
-                      :weeks weeks})))
-   (cond
-     ;; Everyone has been assigned a week
-     (empty? names) plan
+  [plan names weeks]
+  (debug! "Generate Plan:" plan names weeks)
+  (cond
+    ;; Everyone has been assigned a week, return the plan.
+    (empty? names) plan
 
-     ;; All available weeks have been assigned
-     (empty? weeks) plan
+    ;; No weeks left to assign, return the plan.
+    (empty? weeks) plan
 
-     ;; Some week is already assigned to this person
-     (already-assigned? plan (first names))
-     (generate-plan plan (rest names) weeks num-attempts)
+    ;; Some week is already assigned to this person. Remove this week
+    ;; from the list of weeks we are trying to assign to other
+    ;; people.
+    (already-assigned? plan (first names))
+    (let [assigned-week (get-assigned-week plan (first names))]
+      (recur plan (rest names) (remove #{assigned-week} weeks)))
 
-     :else
-     (if-let [new-plan (assign-week plan (first names) (first weeks))]
-       ;; Assignment was successful, move to the next assignment.
-       (generate-plan new-plan (rest names) (rest weeks) num-attempts)
-       ;; Assignment was unsuccessful, swap weeks and try again.
-       (recur plan
-              names
-              (swapper swapper-count weeks)
-              (dec num-attempts)
-              (inc swapper-count))))))
+    :else
+    (if-let [new-plan (assign-week plan (first names) (first weeks))]
+      ;; Assignment was successful, move to the next assignment.
+      (recur new-plan (rest names) (rest weeks))
+      ;; Assignment was unsuccessful, drop a week and try again.
+      (let [new-plan (generate-plan plan names (rest weeks))]
+        ;; Here there will be a new plan returned with a successful
+        ;; assignment for the affected person, or if there is no
+        ;; successful assignment, there is nothing we can do for this
+        ;; person via constraint propagation. Leave the `weeks` list
+        ;; as it is, but drop the person from further checks.
+        (recur new-plan (rest names) weeks)))))
+
+(defn best-week
+  "Given all the information of the person, choose the best week from
+  the possible set of weeks to attempt assignment."
+  [{:keys [prev ideal-distance ideal-week week-wrap-around? next]
+    :as pval}]
+  (debug! "Best Week:" pval)
+  (if ideal-week
+    ;; Choose the option closest to the ideal-week for this person
+    (let [wrap-week? (if week-wrap-around?
+                       ;; set of weeks where distance needs to be
+                       ;; calculated differently.
+                       (set (range (inc prev) 53))
+                       #{})
+          week-distances (map (fn [w]
+                                (if (wrap-week? w)
+                                  [w (+ ideal-week (- 52 w))]
+                                  [w (Math/abs (- ideal-week w))]))
+                              next)]
+      (first (first (sort-by second week-distances))))
+    ;; Choose randomly.
+    (first next)))
+
+(defn solve-by-search
+  "For the given `plan`, if a person does not have a week assigned to
+  them, solve the plan by choosing a value from their possible next
+  values and propagating eliminations."
+  [plan ordered-names]
+  (debug! "Solve by search:" plan ordered-names)
+  (let [solved-predfn (comp (partial = 1) count :next val)]
+    (if (every? solved-predfn plan)
+      ;; Solved!
+      plan
+      (let [pending-plan (->> plan
+                              (sort-by (comp count :next val))
+                              (drop-while solved-predfn)
+                              (mapcat identity)
+                              (apply hash-map))
+            pending-names (set (keys pending-plan))
+            first-name (some pending-names ordered-names)
+            week-to-attempt (best-week (pending-plan first-name))]
+        (or (some-> plan
+                    (assign-week first-name week-to-attempt :ignore-soft-constraint? true)
+                    (solve-by-search ordered-names))
+            (some-> plan
+                    (eliminate-week first-name week-to-attempt)
+                    (solve-by-search ordered-names))
+            (do (println "No search plan is possible beyond the given constraints. Printing final-plan and exiting.")
+                plan))))))
 
 (defn next-rotation
   [rotation]
   (let [urot (uniquify-rotation-entries rotation)
         [base-plan weeks-to-assign] (fill-base-values urot)]
-    (if-let [ret (optimize-base-values base-plan weeks-to-assign)]
-      (generate-plan (first ret) ; the starter plan according to our rotation
-                     (map :name urot) ; Names that we need to assign weeks to
-                     (second ret) ; The week numbers eligible for assignment
-                     (count urot) ; Number of attempts we want to try
-                                  ; to generate the plan
-                     )
+    (if-let [ret (optimize-base-values base-plan
+                                       (map :name urot)
+                                       weeks-to-assign)]
+      ;; `optimize-base-values` returns a tuple of `starting-plan`,
+      ;; `names-needing-assignment` and `weeks-needing-assignment`.
+      (let [constraint-plan (generate-plan (first ret) (second ret) (last ret))]
+        (solve-by-search constraint-plan (map :name urot)))
       ;; No plan is possible.
       (do (println "No plan is possible for the given constraints. Printing base-plan and exiting.")
           base-plan))))
