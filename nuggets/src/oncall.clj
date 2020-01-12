@@ -642,6 +642,20 @@
             (eliminate-week-for-others person-name week)
             (assoc-in [person-name :next] #{week}))))
 
+(defn assign-first-week
+  "Assign the first possible week in the given list of `weeks` to the
+  `person-name`. Return the modified `plan` and the `week` that was
+  assigned to the person."
+  [plan person-name weeks]
+  (if (seq weeks)
+    (if-let [new-plan (assign-week plan person-name (first weeks))]
+      ;; Assignment was successful, return the plan and the week.
+      [new-plan (first weeks)]
+      ;; Assignment was unsuccessful, drop a week and try again.
+      (recur plan person-name (rest weeks)))
+    ;; No weeks left to try, return the plan as-is.
+    [plan nil]))
+
 (defn generate-plan
   "Given an optimized `base-plan`, a list of people-names and a list
   of weeks, return the oncall schedule. Takes a `num-attempts` counter
@@ -666,16 +680,11 @@
       (recur plan (rest names) (remove #{assigned-week} weeks)))
 
     :else
-    (if-let [new-plan (assign-week plan (first names) (first weeks))]
-      ;; Assignment was successful, move to the next assignment.
-      (recur new-plan (rest names) (rest weeks))
-      ;; Assignment was unsuccessful, drop a week and try again.
-      (let [new-plan (generate-plan plan names (rest weeks))]
-        ;; Here there will be a new plan returned with a successful
-        ;; assignment for the affected person, or if there is no
-        ;; successful assignment, there is nothing we can do for this
-        ;; person via constraint propagation. Leave the `weeks` list
-        ;; as it is, but drop the person from further checks.
+    (let [[new-plan assigned-week] (assign-first-week plan (first names) weeks)]
+      (if assigned-week
+        ;; Assignment was successful. Filter this name + week out and recur.
+        (recur new-plan (rest names) (remove #{assigned-week} weeks))
+        ;; Assignment was unsuccessful. Just drop this name and recur.
         (recur new-plan (rest names) weeks)))))
 
 (defn best-week
