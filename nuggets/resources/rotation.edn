@@ -9,7 +9,11 @@
  {:name "Amogh"
   :in-next-rotation? true
   :prev-rotation-week 34
-  :constraints [[2 :hard :feature_work]]}
+  :constraints [[2 :hard :feature_work]
+                [3 :soft :feature_work]
+                [4 :soft :feature_work]
+                [5 :soft :feature_work]
+                [6 :soft :feature_work]]}
  {:name "Daniel"
   :in-next-rotation? true
   :prev-rotation-week 35
@@ -35,19 +39,25 @@
   :prev-rotation-week 39
   :constraints [[2 :hard :leave]
                 [3 :hard :leave]
-                [4 :hard :leave]]}
+                [4 :hard :feature_work]]}
  {:name "Somya"
   :in-next-rotation? true
   :prev-rotation-week 40
-  :constraints [[2 :hard :leave]]}
+  :constraints [[1 :hard :leave]
+                [2 :hard :leave]
+                [3 :hard :leave]]
+  :manually-set-next-rotation 5}
  {:name "Shalaka"
   :in-next-rotation? true
   :prev-rotation-week 41
-  :constraints []}
+  :constraints [[3 :hard :leave]]
+  :manually-set-next-rotation 2}
  {:name "Mourjo"
   :in-next-rotation? true
   :prev-rotation-week 42
-  :constraints []}
+  :constraints [[3 :soft :feature_work]
+                [4 :soft :feature_work]
+                [5 :soft :feature_work]]}
  {:name "Vedang"
   :in-next-rotation? false
   :prev-rotation-week 43
@@ -55,11 +65,17 @@
  {:name "Neha"
   :in-next-rotation? true
   :prev-rotation-week 44
-  :constraints []}
+  :constraints [[2 :hard :feature_work]
+                [3 :soft :feature_work]
+                [4 :soft :feature_work]
+                [5 :soft :feature_work]
+                [6 :soft :feature_work]
+                [11 :hard :leave]]}
  {:name "Faiz"
   :in-next-rotation? true
   :prev-rotation-week 45
-  :constraints []}
+  :constraints [[1 :hard :leave]]
+  :manually-set-next-rotation 4}
  {:name "Harsh"
   :in-next-rotation? true
   :prev-rotation-week 46
@@ -75,7 +91,8 @@
  {:name "Samuel"
   :in-next-rotation? true
   :prev-rotation-week 48
-  :constraints []}
+  :constraints [[1 :hard :leave]
+                [2 :soft :leave]]}
  {:name "Rubal"
   :in-next-rotation? true
   :prev-rotation-week 49
@@ -84,14 +101,18 @@
  {:name "Daniel"
   :in-next-rotation? true
   :prev-rotation-week 50
-  :constraints [[14 :hard :leave]
+  :constraints [[13 :hard :leave]
+                [14 :hard :leave]
                 [15 :hard :leave]
                 [16 :hard :leave]
                 [17 :hard :leave]]}
  {:name "Mangal"
   :in-next-rotation? true
   :prev-rotation-week 51
-  :constraints []}
+  :constraints [[3 :soft :leave]
+                [4 :hard :leave]
+                [17 :hard :leave]
+                [18 :soft :leave]]}
  {:name "Setia"
   :in-next-rotation? true
   :prev-rotation-week 52
@@ -99,16 +120,20 @@
  {:name "Ketan"
   :in-next-rotation? true
   :prev-rotation-week 1
+  :manually-set-next-rotation 9
   :constraints []}
  {:name "Dinesh"
   :in-next-rotation? false
   :constraints []}
  {:name "Narendra"
   :in-next-rotation? true
-  :constraints []}
+  :constraints [[2 :soft :wfh]]
+  :manually-set-next-rotation 19}
  {:name "Mihil"
   :in-next-rotation? true
+  :manually-set-next-rotation 18
   :constraints []}
  {:name "Pranav"
   :in-next-rotation? true
-  :constraints []}]
+  :constraints []
+  :manually-set-next-rotation 20}]
