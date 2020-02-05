@@ -392,49 +392,54 @@
       (println a))
     (println "=======")))
 
+(defn add-new-person-to-rotation
+  "Reducer function. Takes a tuple of `[rotation seen-name?]` and the
+  person to add to the rotation. Adds the person to the rotation if we
+  have not seem them before."
+  [[rotation seen-name?]
+   {person-name :name
+    keep-person? :in-next-rotation?
+    :as p}]
+  (cond
+    (seen-name? person-name)
+    [rotation seen-name?]
+
+    ;; This person is not participating in the next rotation
+    ;; We've seen them, but we do nothing
+    (not keep-person?)
+    [rotation
+     (conj seen-name? person-name)]
+
+    :else
+    [(conj rotation p)
+     (conj seen-name? person-name)]))
+
 (defn uniquify-rotation-entries
   "Keep only the latest rotation information for any person, also keep
   only those people who will participate in the next rotation."
   [rotation]
-  (let [[_ unique-rotation]
-        (reduce (fn [[seen-name? new-rotation]
-                    {person-name :name
-                     keep-person? :in-next-rotation?
-                     :as p}]
-                  (cond
-                    (seen-name? person-name)
-                    [seen-name? new-rotation]
+  ;; Change the list back to vector to respect external return
+  ;; types.
+  (vec
+   (first
+    (reduce add-new-person-to-rotation
+            ;; Works by reading the rotation in reverse order, and
+            ;; keeping track of unique names we see. Using a list
+            ;; for the internal rotation allows conj to build the
+            ;; final list in the correct order (by appending new
+            ;; entries to the head of the list instead of the
+            ;; tail.
+            ['() #{}]
+            (reverse rotation)))))
 
-                    ;; This person is not participating in the next rotation
-                    ;; We've seen them, but we do nothing
-                    (not keep-person?)
-                    [(conj seen-name? person-name)
-                     new-rotation]
-
-                    :else
-                    [(conj seen-name? person-name)
-                     (conj new-rotation p)]))
-                ;; Works by reading the rotation in reverse order, and
-                ;; keeping track of unique names we see. Using a list
-                ;; for the internal rotation allows conj to build the
-                ;; final list in the correct order (by appending new
-                ;; entries to the head of the list instead of the
-                ;; tail.
-                [#{} '()]
-                (reverse rotation))]
-    ;; Change the list back to vector to respect external return
-    ;; types.
-    (vec unique-rotation)))
-
-(defn add-person-to-plan
-  "Given a plan and a person object, add the relevant details of the
-  person to the plan. Remove any hard constraints from the set of
-  possibilities here itself, if a direct assignment is made, make it
-  here itself."
-  [next-values plan {person-name :name
-                     prev-rotation :prev-rotation-week
-                     constraints :constraints
-                     fixed-next :manually-set-next-rotation}]
+(defn build-person-details
+  "Given a person object, build the relevant details of the person.
+  Remove any hard constraints from the set of possibilities here
+  itself, if a direct assignment is made, make it here itself."
+  [next-values
+   {prev-rotation :prev-rotation-week
+    constraints :constraints
+    fixed-next :manually-set-next-rotation}]
   (let [[soft-constraints hard-constraints]
         (reduce (fn [[sc hc] [cweek ctype _]]
                   (if (= ctype :soft)
@@ -450,27 +455,26 @@
         ;; ideal next week is 8 (in the next year). This is a case of
         ;; wrap around.
         week-wrap-around? (> ((fnil + 0) prev-rotation ideal-distance) 52)
-        person-details
-        (merge {:next (cond
-                        ;; We have a pre-decided week for this person
-                        fixed-next #{fixed-next}
-                        ;; Remove hard constraints here itself.
-                        (seq hard-constraints)
-                        (cset/difference next-values hard-constraints)
-                        ;; All given possibilities are possible
-                        :else next-values)
-                :ideal-distance ideal-distance
-                :week-wrap-around? week-wrap-around?}
-               (when prev-rotation
-                 {:prev prev-rotation
-                  :ideal-week (if (> (+ prev-rotation ideal-distance) 52)
-                                (- (+ prev-rotation ideal-distance) 52)
-                                (+ prev-rotation ideal-distance))})
-               (when (seq soft-constraints)
-                 {:soft-constraints soft-constraints})
-               (when (seq hard-constraints)
-                 {:hard-constraints hard-constraints}))]
-    (assoc plan person-name person-details)))
+        next-vals-set (set next-values)]
+    (merge {:next (cond
+                    ;; We have a pre-decided week for this person
+                    fixed-next #{fixed-next}
+                    ;; Remove hard constraints here itself.
+                    (seq hard-constraints)
+                    (cset/difference next-vals-set hard-constraints)
+                    ;; All given possibilities are possible
+                    :else next-vals-set)
+            :ideal-distance ideal-distance
+            :week-wrap-around? week-wrap-around?}
+           (when prev-rotation
+             {:prev prev-rotation
+              :ideal-week (if (> (+ prev-rotation ideal-distance) 52)
+                            (- (+ prev-rotation ideal-distance) 52)
+                            (+ prev-rotation ideal-distance))})
+           (when (seq soft-constraints)
+             {:soft-constraints soft-constraints})
+           (when (seq hard-constraints)
+             {:hard-constraints hard-constraints}))))
 
 (declare assign-week eliminate-week-for-others eliminate-week)
 
@@ -491,9 +495,8 @@
                                  (+ week-counter num-weeks))
                           (concat (range week-counter 53)
                                   (range 1 (- (+ week-counter num-weeks) 52))))
-        base-plan (reduce (partial add-person-to-plan (set weeks-to-assign))
-                          {}
-                          unique-rotation)]
+        base-plan (zipmap (map :name unique-rotation)
+                          (map build-person-details (repeat weeks-to-assign) unique-rotation))]
     [base-plan weeks-to-assign]))
 
 (defn optimize-base-values
@@ -740,14 +743,12 @@
   [rotation]
   (let [urot (uniquify-rotation-entries rotation)
         [base-plan weeks-to-assign] (fill-base-values urot)]
-    (if-let [ret (optimize-base-values base-plan
-                                       (map :name urot)
-                                       weeks-to-assign)]
-      ;; `optimize-base-values` returns a tuple of `starting-plan`,
-      ;; `names-needing-assignment` and `weeks-needing-assignment`.
-      (let [constraint-plan (generate-plan (first ret) (second ret) (last ret))]
-        (solve-by-search constraint-plan (map :name urot)))
-      ;; No plan is possible.
+    (if-let [[starting-plan names-needing-assignment pending-assignment-weeks]
+             (optimize-base-values base-plan (map :name urot) weeks-to-assign)]
+      (let [constraint-plan (generate-plan starting-plan
+                                           names-needing-assignment
+                                           pending-assignment-weeks)]
+        (solve-by-search constraint-plan names-needing-assignment))
       (do (println "No plan is possible for the given constraints. Printing base-plan and exiting.")
           base-plan))))
 

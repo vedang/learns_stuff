@@ -374,25 +374,25 @@
   (t/is (= unique-test-rotation
            (sut/uniquify-rotation-entries test-rotation))))
 
-(t/deftest test-add-person-to-plan
-  (t/is (= {"Amogh" {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
-                     :ideal-distance 19
-                     :week-wrap-around? true
-                     :ideal-week 1
-                     :prev 34}}
-           (sut/add-person-to-plan #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
-                                   {}
-                                   (first unique-test-rotation))))
-  (t/is (= {"Harsh" {:next #{7 20 15 13 6 17 3 12 2 19 11 9 14 16 10 18 8},
-                     :prev 46,
-                     :ideal-distance 19
-                     :week-wrap-around? true
-                     :ideal-week 13
-                     :soft-constraints #{3},
-                     :hard-constraints #{4 5}}}
-           (sut/add-person-to-plan #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
-                                   {}
-                                   (first (drop 8 unique-test-rotation))))))
+;; (t/deftest test-add-person-to-plan
+;;   (t/is (= {"Amogh" {:next #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
+;;                      :ideal-distance 19
+;;                      :week-wrap-around? true
+;;                      :ideal-week 1
+;;                      :prev 34}}
+;;            (sut/add-person-to-plan #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
+;;                                    {}
+;;                                    (first unique-test-rotation))))
+;;   (t/is (= {"Harsh" {:next #{7 20 15 13 6 17 3 12 2 19 11 9 14 16 10 18 8},
+;;                      :prev 46,
+;;                      :ideal-distance 19
+;;                      :week-wrap-around? true
+;;                      :ideal-week 13
+;;                      :soft-constraints #{3},
+;;                      :hard-constraints #{4 5}}}
+;;            (sut/add-person-to-plan #{7 20 4 15 13 6 17 3 12 2 19 11 9 5 14 16 10 18 8}
+;;                                    {}
+;;                                    (first (drop 8 unique-test-rotation))))))
 
 (t/deftest test-fill-base-values
   (let [res (sut/fill-base-values unique-test-rotation)]
