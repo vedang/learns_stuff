@@ -1,139 +1,30 @@
-[{:name "Pardeep"
-  :in-next-rotation? false
-  :prev-rotation-week 32
-  :constraints []}
- {:name "Pavitra"
-  :in-next-rotation? false
-  :prev-rotation-week 33
-  :constraints []}
+[{:name "Harsh"
+  :in-next-rotation? true
+  :constraints [[21 :hard :leave]
+                [23 :hard :leave]
+                [24 :hard :leave]
+                [25 :hard :leave]]}
  {:name "Amogh"
   :in-next-rotation? true
-  :prev-rotation-week 34
-  :constraints [[2 :hard :feature_work]
-                [3 :soft :feature_work]
-                [4 :soft :feature_work]
-                [5 :soft :feature_work]
-                [6 :soft :feature_work]]}
- {:name "Daniel"
-  :in-next-rotation? true
-  :prev-rotation-week 35
-  :assist "Shantanu"
-  :constraints []}
- {:name "Mangal"
-  :in-next-rotation? true
-  :prev-rotation-week 36
-  :assist "Shalaka"
-  :constraints []}
- {:name "Setia"
-  :in-next-rotation? true
-  :prev-rotation-week 37
-  :assist "Mourjo"
-  :constraints []}
- {:name "Shantanu"
-  :in-next-rotation? true
-  :prev-rotation-week 38
-  :constraints [[2 :hard :feature_work]]
-  :manually-set-next-rotation 3}
+  :constraints [[21 :hard :feature_work]]}
  {:name "Suvrat"
   :in-next-rotation? true
-  :prev-rotation-week 39
-  :constraints [[2 :hard :leave]
-                [3 :hard :leave]
-                [4 :hard :feature_work]]}
- {:name "Somya"
-  :in-next-rotation? true
-  :prev-rotation-week 40
-  :constraints [[1 :hard :leave]
-                [2 :hard :leave]
-                [3 :hard :leave]]
-  :manually-set-next-rotation 5}
- {:name "Shalaka"
-  :in-next-rotation? true
-  :prev-rotation-week 41
-  :constraints [[3 :hard :leave]]
-  :manually-set-next-rotation 2}
- {:name "Mourjo"
-  :in-next-rotation? true
-  :prev-rotation-week 42
-  :constraints [[3 :soft :feature_work]
-                [4 :soft :feature_work]
-                [5 :soft :feature_work]]}
+  :manually-set-next-rotation 21
+  :constraints []}
  {:name "Vedang"
   :in-next-rotation? false
-  :prev-rotation-week 43
-  :constraints [[1 :soft :leave]]}
- {:name "Neha"
-  :in-next-rotation? true
-  :prev-rotation-week 44
-  :constraints [[2 :hard :feature_work]
-                [3 :soft :feature_work]
-                [4 :soft :feature_work]
-                [5 :soft :feature_work]
-                [6 :soft :feature_work]
-                [11 :hard :leave]]}
- {:name "Faiz"
-  :in-next-rotation? true
-  :prev-rotation-week 45
-  :constraints [[1 :hard :leave]]
-  :manually-set-next-rotation 4}
- {:name "Harsh"
-  :in-next-rotation? true
-  :prev-rotation-week 46
-  :constraints [[3 :soft :leave]
-                [4 :hard :leave]
-                [5 :hard :leave]]}
- {:name "Ramya"
-  :in-next-rotation? true
-  :prev-rotation-week 47
-  :constraints [[1 :soft :leave]
-                [5 :hard :leave]
-                [6 :hard :leave]]}
+  :constraints []}
  {:name "Samuel"
   :in-next-rotation? true
-  :prev-rotation-week 48
-  :constraints [[1 :hard :leave]
-                [2 :soft :leave]]}
- {:name "Rubal"
-  :in-next-rotation? true
-  :prev-rotation-week 49
-  :constraints [[1 :hard :leave]
-                [2 :hard :leave]]}
- {:name "Daniel"
-  :in-next-rotation? true
-  :prev-rotation-week 50
-  :constraints [[13 :hard :leave]
-                [14 :hard :leave]
-                [15 :hard :leave]
-                [16 :hard :leave]
-                [17 :hard :leave]]}
- {:name "Mangal"
-  :in-next-rotation? true
-  :prev-rotation-week 51
-  :constraints [[3 :soft :leave]
-                [4 :hard :leave]
-                [17 :hard :leave]
-                [18 :soft :leave]]}
- {:name "Setia"
-  :in-next-rotation? true
-  :prev-rotation-week 52
   :constraints []}
- {:name "Ketan"
-  :in-next-rotation? true
-  :prev-rotation-week 1
-  :manually-set-next-rotation 9
-  :constraints []}
- {:name "Dinesh"
+ {:name "Nachiket"
   :in-next-rotation? false
   :constraints []}
- {:name "Narendra"
+ {:name "Karan"
   :in-next-rotation? true
-  :constraints [[2 :soft :wfh]]
-  :manually-set-next-rotation 19}
- {:name "Mihil"
-  :in-next-rotation? true
-  :manually-set-next-rotation 18
+  :prev-rotation-week 19
   :constraints []}
- {:name "Pranav"
+ {:name "Anushree"
   :in-next-rotation? true
-  :constraints []
-  :manually-set-next-rotation 20}]
+  :prev-rotation-week 20
+  :constraints []}]
