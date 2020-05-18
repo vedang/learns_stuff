@@ -14,4 +14,8 @@
                  [org.jsoup/jsoup "1.12.1"]
                  [clj-time "0.15.2"]
                  [clojure.java-time "0.3.2"]
+                 [org.clojure/core.typed.runtime.jvm "0.7.2"]
+                 [org.clojure/core.typed.checker.jvm "0.7.2"]
+                 [org.clojure/core.typed.analyzer.jvm "0.7.2"]
+                 [org.clojure/core.typed.annotator.jvm "0.7.2"]
                  [org.clojure/test.check "0.10.0"]])
