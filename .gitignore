@@ -3,3 +3,5 @@ nuggets/resources/worm
 .DS_Store
 .git-fetch
 .lein-env
+nuggets/resources/lit
+.cljstyle

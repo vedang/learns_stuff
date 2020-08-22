@@ -15,4 +15,5 @@
                  [org.jsoup/jsoup "1.12.2"]
                  [clj-time "0.15.2"]
                  [clojure.java-time "0.3.2"]
-                 [org.clojure/test.check "1.0.0"]])
+                 [org.clojure/test.check "1.0.0"]
+                 [org.clojure/core.async "1.2.603"]])
