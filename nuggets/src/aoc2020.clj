@@ -75,3 +75,43 @@
              (not= pmax-char pchar))
         (and (not= pmin-char pchar)
              (= pmax-char pchar)))))
+
+(defn tree-coords
+  "Given an input, return the tree co-ords in that input."
+  [input]
+  (mapcat (fn [[item rownum]]
+            (keep identity
+                  (map-indexed (fn [idx it]
+                                 (when (= \# it)
+                                   ;; return [x, y] co-ordinates
+                                   [idx rownum]))
+                               item)))
+          (partition 2 (interleave input (range)))))
+
+(defn calc-movement
+  [start-pos slope-pos max-pos]
+  (let [new-pos (rem (+ start-pos slope-pos) max-pos)]
+    (if (neg? new-pos)
+      (+ max-pos new-pos)
+      new-pos)))
+
+(defn slope-points
+  "Given a starting co-ordinate (x,y = pos), a slope co-ordinate (x,y =
+  motion along x,y axis), and max co-ordinate (x,y = total num of
+  cols, total num of rows), return all the points on the slope I will
+  hit until I return to x = starting co-ordinate."
+  [[start-x start-y] [slope-x slope-y] [count-x count-y]]
+  (loop [curr-x start-x
+         curr-y start-y
+         prev-y start-y
+         points [[start-x start-y]]]
+    (let [moved-x (calc-movement curr-x slope-x count-x)
+          moved-y (calc-movement curr-y slope-y count-y)]
+      (if (> prev-y moved-y) ;; we rolled over on the y axis
+        points
+        (recur moved-x moved-y curr-y (conj points [moved-x moved-y]))))))
+
+(comment
+  (count
+   (clojure.set/intersection (set (tree-coords input-3))
+                             (set (slope-points [0 0] [3 1] [11 11])))))
