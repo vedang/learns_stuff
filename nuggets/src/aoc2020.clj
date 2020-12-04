@@ -1,5 +1,7 @@
 (ns aoc2020
-  (:require [clojure.string :as cs]))
+  (:require [clojure.java.io :as io]
+            [clojure.spec.alpha :as s]
+            [clojure.string :as cs]))
 
 (defn find-nums-with-sum
   "Given a number `sum` and a list of numbers `nums`, find 2 numbers
@@ -147,3 +149,96 @@
              ;; so on)
              (drop-every (dec y-movement-coord)
                          (drop y-movement-coord input-paths))))))
+
+(defn valid-yr?
+  [yr min-yr max-yr]
+  (and (string? yr)
+       (= 4 (count yr))
+       (try (<= min-yr (Integer/parseInt yr) max-yr)
+            (catch Exception _))))
+
+(defn valid-hgt?
+  [hgt]
+  (let [l (cs/split hgt #"cm|in")]
+    (and (empty? (rest l))
+         (cond
+           (cs/ends-with? hgt "cm")
+           (try (<= 150 (Integer/parseInt (first l)) 193)
+                (catch Exception _))
+
+           (cs/ends-with? hgt "in")
+           (try (<= 59 (Integer/parseInt (first l)) 76)
+                (catch Exception _))
+
+           :else false))))
+
+(defn valid-hcl?
+  [hcl]
+  (re-matches #"^#[0-9a-f]{6}$" hcl)
+  (and (= 7 (count hcl))
+       (cs/starts-with? hcl "#")
+       ()))
+
+(s/def ::byr #(valid-yr? % 1920 2002)) ;; byr (Birth Year) 1937
+(s/def ::iyr #(valid-yr? % 2010 2020)) ;; iyr (Issue Year) 2017
+(s/def ::eyr #(valid-yr? % 2020 2030)) ;; eyr (Expiration Year) 2020
+(s/def ::hgt valid-hgt?) ;; hgt (Height) 183cm
+(s/def ::hcl (partial re-matches #"^#[0-9a-f]{6}$")) ;; hcl (Hair Color) #fffffd
+(s/def ::ecl #{"amb" "blu" "brn" "gry" "grn" "hzl" "oth"}) ;; ecl (Eye Color) gry
+(s/def ::pid (partial re-matches #"^[0-9]{9}$")) ;; pid (Passport ID) 860033327
+(s/def ::cid string?) ;; cid (Country ID) 147
+(s/def ::passport
+  (s/keys :req [::byr
+                ::iyr
+                ::eyr
+                ::hgt
+                ::hcl
+                ::ecl
+                ::pid
+                ::cid]))
+(s/def ::north-pole-passport
+  (s/keys :req [::byr
+                ::iyr
+                ::eyr
+                ::hgt
+                ::hcl
+                ::ecl
+                ::pid]
+          :opt [::cid]))
+
+(defn process-line
+  "Given a `line` in the batch-file, return an object of properties on
+  the line.
+  eg line looks like this: ecl:gry pid:860033327 eyr:2020 hcl:#fffffd
+  output:
+  {::ecl \"gry\"
+   ::pid \"860033327\"
+   ::eyr \"2020\"
+   ::hcl \"#fffffd\"}"
+  [line]
+  (into {}
+        (map (fn [i]
+               (let [[k v] (cs/split i #":")]
+                 [(keyword (str *ns*) k) v]))
+             (cs/split line  #" "))))
+
+(defn batch-lines->objs
+  [batch-lines]
+  (let [[os co]
+        (reduce (fn [[objs curr-obj] line]
+                  (if (empty? line)
+                    [(conj objs curr-obj) {}]
+                    [objs (merge curr-obj (process-line line))]))
+                [[] {}]
+                batch-lines)]
+    (conj os co)))
+
+(defn read-batch-file
+  "Given a `batch-file`, return all the objects in the batch."
+  [batch-file]
+  (with-open [rdr (io/reader (io/resource batch-file))]
+    (batch-lines->objs (line-seq rdr))))
+
+(comment
+  (count (filter (partial s/valid? ::passport)
+                 (read-batch-file "aoc/test-input-4.txt"))))

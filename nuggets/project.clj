@@ -16,4 +16,6 @@
                  [clj-time "0.15.2"]
                  [clojure.java-time "0.3.2"]
                  [org.clojure/test.check "1.0.0"]
-                 [org.clojure/core.async "1.2.603"]])
+                 [org.clojure/core.async "1.2.603"]
+                 [instaparse "1.4.10"]
+                 [org.clojure/spec.alpha "0.2.187"]])

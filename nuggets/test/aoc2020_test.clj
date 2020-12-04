@@ -1,5 +1,6 @@
 (ns aoc2020-test
   (:require [aoc2020 :as sut]
+            [clojure.spec.alpha :as s]
             [clojure.test :as t]))
 
 (t/deftest two-number-sum-detection
@@ -69,3 +70,57 @@
 (t/deftest check-slope-points
   (t/is (= [[0 0] [3 1] [6 2] [9 3] [1 4] [4 5] [7 6] [10 7] [2 8] [5 9] [8 10]]
            (sut/slope-points [0 0] [3 1] [11 11]))))
+
+(t/deftest check-process-line
+  (t/is (= #:aoc2020{:ecl "gry", :pid "860033327", :eyr "2020", :hcl "#fffffd"}
+           (sut/process-line "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd"))))
+
+(t/deftest check-read-batch-file
+  (t/is (= 4 (count (sut/read-batch-file "aoc/test-input-4.txt"))))
+  (t/is (= 1 (count (filter (partial s/valid? :aoc2020/passport)
+                            (sut/read-batch-file "aoc/test-input-4.txt")))))
+  (t/is (= 2 (count (filter (partial s/valid? :aoc2020/north-pole-passport)
+                            (sut/read-batch-file "aoc/test-input-4.txt"))))))
+
+(t/deftest check-valid-yr?
+  (t/is (sut/valid-yr? "2002" 1920 2002))
+  (t/is (not (sut/valid-yr? "2003" 1920 2002))))
+
+(t/deftest check-valid-hgt?
+  (t/is (sut/valid-hgt? "60in"))
+  (t/is (sut/valid-hgt? "190cm"))
+  (t/is (not (sut/valid-hgt? "190in")))
+  (t/is (not (sut/valid-hgt? "190"))))
+
+(t/deftest check-new-validity-rules
+  (t/is
+   (every? (comp not (partial s/valid? :aoc2020/north-pole-passport))
+           (sut/batch-lines->objs
+            ["eyr:1972 cid:100"
+             "hcl:#18171d ecl:amb hgt:170 pid:186cm iyr:2018 byr:1926"
+             ""
+             "iyr:2019"
+             "hcl:#602927 eyr:1967 hgt:170cm"
+             "ecl:grn pid:012533040 byr:1946"
+             ""
+             "hcl:dab227 iyr:2012"
+             "ecl:brn hgt:182cm pid:021572410 eyr:2020 byr:1992 cid:277"
+             ""
+             "hgt:59cm ecl:zzz"
+             "eyr:2038 hcl:74454a iyr:2023"
+             "pid:3556412378 byr:2007"])))
+  (t/is
+   (every? (partial s/valid? :aoc2020/north-pole-passport)
+           (sut/batch-lines->objs
+            ["pid:087499704 hgt:74in ecl:grn iyr:2012 eyr:2030 byr:1980"
+             "hcl:#623a2f"
+             ""
+             "eyr:2029 ecl:blu cid:129 byr:1989"
+             "iyr:2014 pid:896056539 hcl:#a97842 hgt:165cm"
+             ""
+             "hcl:#888785"
+             "hgt:164cm byr:2001 iyr:2015 cid:88"
+             "pid:545766238 ecl:hzl"
+             "eyr:2022"
+             ""
+             "iyr:2010 hgt:158cm hcl:#b6652a ecl:blu byr:1944 eyr:2021 pid:093154719"]))))
