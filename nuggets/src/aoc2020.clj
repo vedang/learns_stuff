@@ -115,3 +115,35 @@
   (count
    (clojure.set/intersection (set (tree-coords input-3))
                              (set (slope-points [0 0] [3 1] [11 11])))))
+
+(defn drop-every
+  "Given an `input` seq and a `num` of elems to drop, return a sequence
+  starting from first element and then dropping every `num` elements.
+  eg: (drop-every [1 2 3 4 5] 1) => [1 3 5]"
+  [drop-num input]
+  (lazy-seq
+   (when (seq input)
+     (cons (first input)
+           (drop-every drop-num (drop (inc drop-num) input))))))
+
+(defn count-trees-in-path
+  "Given input paths and movement instructions, return the number of
+  trees you see when travelling along the path. Each path is
+  represented as a collection of . and #. # == tree. We have to go
+  through all the paths, starting from the top, every y-paths."
+  [input-paths x-movement-coord y-movement-coord]
+  (let [max-x (count (first input-paths))]
+    (first
+     (reduce (fn [[tree-count curr-x] line]
+               (if (= \# (nth line (rem (+ curr-x x-movement-coord) max-x)))
+                 [(inc tree-count) (+ curr-x x-movement-coord)]
+                 [tree-count (+ curr-x x-movement-coord)]))
+             [0 0]
+             ;; We always start with the yth line, since that's where
+             ;; we start looking for trees. From that point on, we
+             ;; want to look at only every yth line in the input.
+             ;; (down-1 movement means we don't want to drop any line,
+             ;; down-2 means we want to drop every alternate line and
+             ;; so on)
+             (drop-every (dec y-movement-coord)
+                         (drop y-movement-coord input-paths))))))
