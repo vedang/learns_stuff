@@ -1,5 +1,6 @@
 (ns aoc2020
   (:require [clojure.java.io :as io]
+            [clojure.set :as cset]
             [clojure.spec.alpha :as s]
             [clojure.string :as cs]))
 
@@ -234,14 +235,15 @@
     (conj os co)))
 
 (defn read-batch-file
-  "Given a `batch-file`, return all the objects in the batch."
-  [batch-file]
+  "Given a `batch-file`, and a function to process all the lines in
+  the file, return the result of processing the file."
+  [batch-file batch-fn]
   (with-open [rdr (io/reader (io/resource batch-file))]
-    (batch-lines->objs (line-seq rdr))))
+    (batch-fn (line-seq rdr))))
 
 (comment
-  (count (filter (partial s/valid? ::passport)
-                 (read-batch-file "aoc/test-input-4.txt"))))
+  (count (filter (partial s/valid? ::north-pole-passport)
+                 (read-batch-file "aoc/test-input-4.txt" batch-lines->objs))))
 
 
 (defn seat-num
@@ -270,3 +272,18 @@
                      (reduced [a b])
                      b))
                  (sort (map seat-id input-5))))
+
+(defn group-ans-processor
+  [batch-lines group-ans-processor-fn]
+  (let [[final-ans last-group]
+        (reduce (fn [[ans curr-group] line]
+                  (if (empty? line)
+                    [(+ ans (count (apply group-ans-processor-fn curr-group))) []]
+                    [ans (conj curr-group (into #{} line))]))
+                [0 []]
+                batch-lines)]
+    (+ final-ans (count (apply group-ans-processor-fn last-group)))))
+
+(comment
+  (read-batch-file "aoc/test-input-6.txt" #(group-ans-processor % cset/union))
+  (read-batch-file "aoc/test-input-6.txt" #(group-ans-processor % cset/intersection)))

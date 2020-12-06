@@ -1,5 +1,6 @@
 (ns aoc2020-test
   (:require [aoc2020 :as sut]
+            [clojure.set :as cset]
             [clojure.spec.alpha :as s]
             [clojure.test :as t]))
 
@@ -76,11 +77,14 @@
            (sut/process-line "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd"))))
 
 (t/deftest check-read-batch-file
-  (t/is (= 4 (count (sut/read-batch-file "aoc/test-input-4.txt"))))
+  (t/is (= 4 (count (sut/read-batch-file "aoc/test-input-4.txt"
+                                         sut/batch-lines->objs))))
   (t/is (= 1 (count (filter (partial s/valid? :aoc2020/passport)
-                            (sut/read-batch-file "aoc/test-input-4.txt")))))
+                            (sut/read-batch-file "aoc/test-input-4.txt"
+                                                 sut/batch-lines->objs)))))
   (t/is (= 2 (count (filter (partial s/valid? :aoc2020/north-pole-passport)
-                            (sut/read-batch-file "aoc/test-input-4.txt"))))))
+                            (sut/read-batch-file "aoc/test-input-4.txt"
+                                                 sut/batch-lines->objs))))))
 
 (t/deftest check-valid-yr?
   (t/is (sut/valid-yr? "2002" 1920 2002))
@@ -137,3 +141,9 @@
   (t/is (=  567 (sut/seat-id "BFFFBBFRRR")))
   (t/is (=  119 (sut/seat-id "FFFBBBFRRR")))
   (t/is (=  820 (sut/seat-id "BBFFBBFRLL"))))
+
+(t/deftest check-group-answers
+  (t/is (= 11 (sut/read-batch-file "aoc/test-input-6.txt"
+                                   #(sut/group-ans-processor % cset/union))))
+  (t/is (= 6 (sut/read-batch-file "aoc/test-input-6.txt"
+                                  #(sut/group-ans-processor % cset/intersection)))))
