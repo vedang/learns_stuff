@@ -242,3 +242,31 @@
 (comment
   (count (filter (partial s/valid? ::passport)
                  (read-batch-file "aoc/test-input-4.txt"))))
+
+
+(defn seat-num
+  "Given a seat-str, bounds, lower-char and upper-char, find the
+  seat-num using binary spacing."
+  [seat-str bounds lower-char upper-char]
+  (first
+   (reduce (fn [[s e] c]
+             (let [mid (/ (inc (- e s)) 2)]
+               (cond
+                 (= c lower-char) [s (- e mid)]
+                 (= c upper-char) [(+ s mid) e])))
+           bounds
+           seat-str)))
+
+(defn seat-id
+  "Given a seat-str, get the row-num, col-num and return
+  (+ col-num (* 8 row-num))"
+  [seat-str]
+  (+ (seat-num (subs seat-str 7) [0 7] \L \R)
+     (* 8 (seat-num (subs seat-str 0 7) [0 127] \F \B))))
+
+(comment (apply max (map seat-id input-5))
+         (reduce (fn [a b]
+                   (if (not= (inc a) b)
+                     (reduced [a b])
+                     b))
+                 (sort (map seat-id input-5))))

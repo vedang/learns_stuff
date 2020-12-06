@@ -124,3 +124,16 @@
              "eyr:2022"
              ""
              "iyr:2010 hgt:158cm hcl:#b6652a ecl:blu byr:1944 eyr:2021 pid:093154719"]))))
+
+(t/deftest check-seat-num
+  (t/is (= 70 (sut/seat-num "BFFFBBF" [0 127] \F \B)))
+  (t/is (= 14 (sut/seat-num "FFFBBBF" [0 127] \F \B)))
+  (t/is (= 102 (sut/seat-num "BBFFBBF" [0 127] \F \B)))
+  (t/is (= 7 (sut/seat-num "RRR" [0 7] \L \R)))
+  (t/is (= 0 (sut/seat-num "LLL" [0 7] \L \R)))
+  (t/is (= 4 (sut/seat-num "RLL" [0 7] \L \R))))
+
+(t/deftest check-seat-id
+  (t/is (=  567 (sut/seat-id "BFFFBBFRRR")))
+  (t/is (=  119 (sut/seat-id "FFFBBBFRRR")))
+  (t/is (=  820 (sut/seat-id "BBFFBBFRLL"))))
