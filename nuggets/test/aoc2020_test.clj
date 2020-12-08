@@ -147,3 +147,34 @@
                                    #(sut/group-ans-processor % cset/union))))
   (t/is (= 6 (sut/read-batch-file "aoc/test-input-6.txt"
                                   #(sut/group-ans-processor % cset/intersection)))))
+
+(t/deftest check-process-single-bag-rule
+  (t/is (= ["light red" '([1 "bright white"] [2 "muted yellow"])]
+           (sut/process-single-bag-rule
+            "light red bags contain 1 bright white bag, 2 muted yellow bags.")))
+  (t/is (= ["dotted black" '()]
+           (sut/process-single-bag-rule
+            "dotted black bags contain no other bags.")))
+  (t/is (= ["vibrant plum" '([5 "faded blue"] [6 "dotted black"])]
+           (sut/process-single-bag-rule
+            "vibrant plum bags contain 5 faded blue bags, 6 dotted black bags."))))
+
+(t/deftest check-containers-challenge
+  (t/is (= 4 (-> "aoc/test-input-7.txt"
+                 (sut/read-batch-file sut/bags-reverse-mapper)
+                 (sut/color-containers "shiny gold")
+                 count)))
+  (t/is (= 2 (-> "aoc/test-input-7-2.txt"
+                 (sut/read-batch-file sut/bags-reverse-mapper)
+                 (sut/color-containers "dark orange")
+                 count))))
+
+(t/deftest check-bag-count-challenge
+  (t/is (= 32 (-> "aoc/test-input-7.txt"
+                  (sut/read-batch-file sut/bags-graph)
+                  (sut/count-your-bags "shiny gold")
+                  dec)))
+  (t/is (= 126 (-> "aoc/test-input-7-2.txt"
+                   (sut/read-batch-file sut/bags-graph)
+                   (sut/count-your-bags "shiny gold")
+                   dec))))
