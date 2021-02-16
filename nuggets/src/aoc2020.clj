@@ -239,7 +239,7 @@
   the file, return the result of processing the file."
   [batch-file batch-fn]
   (with-open [rdr (io/reader (io/resource batch-file))]
-    (batch-fn (line-seq rdr))))
+    (doall (batch-fn (line-seq rdr)))))
 
 (comment
   (count (filter (partial s/valid? ::north-pole-passport)
@@ -361,3 +361,126 @@
       (read-batch-file bags-graph)
       (count-your-bags "shiny gold")
       dec))
+
+(defn rotate
+  [coll n]
+  (assert (> (count coll) (Math/abs n)))
+  (if (neg? n)
+    (rotate coll (+ (count coll) n))
+    (concat (drop n coll) (take n coll))))
+
+(defn boot-inst-processor
+  "Given a boot instruction like nop +0, return [nop 0]."
+  [inst]
+  (let [[op v] (cs/split inst #" ")
+        vint (Integer/parseInt v)]
+    [op vint]))
+
+(defn boot-code-debugger
+  ([boot-code]
+   (let [indexed-boot-code (map-indexed (fn [i c] [i c]) boot-code)]
+     (boot-code-debugger indexed-boot-code
+                         0
+                         #{}
+                         (last indexed-boot-code)
+                         false)))
+  ([boot-code accumulator seen-instructions last-instruction finished?]
+   (cond
+     ;; Am I done?
+     finished? [accumulator ::exit]
+
+     ;; Hello boot-code, my old friend!
+     (seen-instructions (first boot-code))
+     [accumulator ::loop]
+
+     ;; Run tiny interpreter
+     :else
+     (let [bc (first boot-code)
+           [_ inst] bc
+           [op vint] (boot-inst-processor inst)]
+       (case op
+         "acc" (recur (rotate boot-code 1)
+                      (+ accumulator vint)
+                      (conj seen-instructions bc)
+                      last-instruction
+                      (= last-instruction bc))
+         "nop" (recur (rotate boot-code 1)
+                      accumulator
+                      (conj seen-instructions bc)
+                      last-instruction
+                      (= last-instruction bc))
+         "jmp" (recur (rotate boot-code vint)
+                      accumulator
+                      (conj seen-instructions bc)
+                      last-instruction
+                      (= last-instruction bc)))))))
+
+(defn- replace-inst-and-debug
+  "In the given `boot-code`, replace the inst at `inst-counter`
+  location with the `new-inst`. Run the debugger and check if we
+  exit.
+
+  This is a helper function and only runs inside `boot-code-fixer`."
+  [boot-code inst-counter new-inst]
+  (let [[acc reason] (boot-code-debugger
+                      (concat (take inst-counter boot-code)
+                              (list new-inst)
+                              (drop (inc inst-counter) boot-code)))]
+    (if (= ::exit reason)
+      ;; Found the fix!
+      (reduced [acc reason])
+      (inc inst-counter))))
+
+(defn boot-code-fixer
+  "Fix one single jmp or nop instruction to check if the program exits.
+  Logic: Change nops where offset is positive (to jmp), change jmps
+  where offset is negative (to nop) and try."
+  [boot-code]
+  (reduce (fn [inst-counter inst]
+            (let [[op vint] (boot-inst-processor inst)]
+              (cond
+                ;; Change pos nop to jmp and try
+                (and (= op "nop") (pos? vint))
+                (replace-inst-and-debug boot-code
+                                        inst-counter
+                                        (str "jmp " vint))
+
+                ;; Change neg jmp to nop and try
+                (and (= op "jmp") (neg? vint))
+                (replace-inst-and-debug boot-code
+                                        inst-counter
+                                        (str "nop " vint))
+
+                :else (inc inst-counter))))
+          0
+          boot-code))
+
+;;; Day 9
+
+(defn xmas-corrupt-data-detector
+  "Given the `corrupt-data` and the length of the preamble `p-len`,
+  find the first num in the data post the preamble which is not a sum
+  of 2 numbers in the preceding `p-len` numbers."
+  [corrupt-data p-len]
+  (let [data-under-test (take p-len corrupt-data)
+        item (first (drop p-len corrupt-data))]
+    (if-let [pair (find-nums-with-sum item data-under-test)]
+      (do ;; (println (format "%s is the sum of : %s" item pair))
+          (recur (concat (drop 1 corrupt-data) (take 1 corrupt-data)) p-len))
+      item)))
+
+(defn sum-till-greater-than
+  [weak-n data]
+  )
+
+(defn xmas-weakness-detector
+  "Given the weak number `weak-n`, and the `data`, return a contiguous
+  list of numbers whose sum is `weak-n`."
+  ;; idea: sum nums till sum exceeds weak-n, then drop initial numbs
+  ;; till sum falls under weak-n. At any point, if the sum is exactly
+  ;; the same, that list is the answer.
+  [data weak-n]
+  (let [[res sum contiguous-data] (sum-till-greater-than weak-n data)]
+    (case res
+      ::exact contiguous-data
+      ::exceeds (drop-till-less-than weak-n sum data))))
