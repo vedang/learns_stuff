@@ -16,21 +16,19 @@
 (defn- collect-pages
   "Given the list of page-number nodes, return the page numbers (ints)."
   [page-nodes]
-  (map (comp (fn [i] (Integer/parseInt i))
-             :value
-             :attrs)
-       page-nodes))
+  (->> page-nodes
+       (filter :content)
+       (filter (fn [el] (= "l_bJ" (get-in el [:attrs :class]))))
+       last
+       ((comp (fn [i] (Integer/parseInt i)) first :content))
+       inc
+       (range 2)))
 
 (defn- clean-text
   "Clean the list of text-nodes, return a single string of scraped and
   formatted text."
   [ch-text-nodes]
-  (->> ch-text-nodes
-       ;; Remove single new-line entries
-       (keep #(when-not (= "\n" %) %))
-       ;; Replace single newline in content with double newlines
-       (map #(cs/replace % #"\n" "\n\n"))
-       (apply str)))
+  (apply str (interleave ch-text-nodes (repeat "\n\n"))))
 
 (defn build-page
   "Given a `ch-link`, `page-num` and a string representing `existing-content`,
@@ -40,7 +38,7 @@
     (try (println "Scraping: " pg-link)
          (let [scrape-data (e/html-resource (java.net.URL. pg-link))
                page-content (-> scrape-data
-                                (e/select [:div.b-story-body-x e/text-node])
+                                (e/select [:div.aa_ht e/text-node])
                                 clean-text)]
            (str existing-content "\n\n" page-content))
          (catch Exception e
@@ -53,13 +51,13 @@
   [ch-num ch-link ch-filepath]
   (let [scrape-data (e/html-resource (java.net.URL. ch-link))
         first-page-content (-> scrape-data
-                               (e/select [:div.b-story-body-x e/text-node])
+                               (e/select [:div.aa_ht e/text-node])
                                clean-text)
         pages (-> scrape-data
-                  (e/select [:div.b-pager-pages :form :select :option])
+                  (e/select [:a.l_bJ])
                   collect-pages)
         full-content (loop [content first-page-content
-                            page-list (drop 1 pages)]
+                            page-list pages]
                        (if (and (first page-list) content)
                          (recur (build-page ch-link
                                             (first page-list)
