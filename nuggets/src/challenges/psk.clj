@@ -1,7 +1,7 @@
 (ns challenges.psk
   "A Simulation of the Passport Seva Kendra"
   (:require [clj-time.core :as ct]
-            [clojure.tools.logging :as ctl])
+            [com.brunobonacci.mulog :as mu])
   (:import [java.util.concurrent LinkedBlockingQueue PriorityBlockingQueue]))
 
 
@@ -251,11 +251,12 @@
                           ;; are against you.
                           (* 10 processing-time*)
                           processing-time*)]
-    (ctl/debug (format "[Agent: %s] [Stage: %s] Doing %s ms of work for %s person"
-                       (agent-representation psk-agent)
-                       stage
-                       processing-time
-                       (person-representation person)))
+    (mu/log ::process-person
+            :debug true
+            :agent (agent-representation psk-agent)
+            :stage stage
+            :processing-time processing-time
+            :person (person-representation person))
     (Thread/sleep processing-time)))
 
 (defn- mark-processing-as-complete
@@ -263,42 +264,55 @@
   Takes `person` and `notice-board` refs, performs a transactional
   update."
   [stage notice-board psk-agent person]
-  (let [person-str (person-representation @person)]
-    (dosync
-     (alter person assoc :stage stage :stage-status ::done :psk-agent nil)
-     (store-stage-change person stage ::done)
-     (alter notice-board dissoc person-str))
+  (mu/trace
+   ::mark-processing-as-complete
+   [:stage stage
+    :agent (agent-representation psk-agent)
+    :person (person-representation @person)]
+   (let [person-str (person-representation @person)]
+     (dosync
+      (alter person assoc :stage stage :stage-status ::done :psk-agent nil)
+      (store-stage-change person stage ::done)
+      (alter notice-board dissoc person-str))
 
-    (ctl/debug "Processing Complete!"
-               (assoc psk-agent :current-applicant person-str))))
+     (mu/log ::mark-processing-as-complete
+             :debug true
+             :agent (assoc psk-agent :current-applicant person-str)))))
 
 (defn process-applicant
   "Get a person from the queue. Process this person as per the rules
   of the counter."
   [psk-agent my-queue notice-board]
-  (ctl/debug (format "[Agent: %s] Waiting for next person!"
-                     (agent-representation psk-agent)))
+  (mu/log ::process-applicant
+          :debug true
+          :agent (agent-representation psk-agent)
+          :waiting true)
   (if @working-hours?
 
     (if-let [person (.poll my-queue 1 java.util.concurrent.TimeUnit/SECONDS)]
       (let [stage (:type psk-agent)
             stage-config (:config psk-agent)]
-        (ctl/debug (format "[Agent: %s] We have a person: %s"
-                           (agent-representation psk-agent)
-                           person))
+        (mu/log ::process-applicant
+                :debug true
+                :agent (agent-representation psk-agent)
+                :person (person-representation person)
+                :assigned-to-agent true)
         (call-person-to-counter stage notice-board psk-agent person)
         (process-person stage stage-config psk-agent @person)
         (mark-processing-as-complete stage notice-board psk-agent person)
         ;; Next!
-        (ctl/debug "Repeating Agent")
+        (mu/log ::process-applicant
+                :debug true
+                :repeating true)
         (send-off *agent* process-applicant my-queue notice-board)
         ;; Set the new state of the agent.
         (assoc psk-agent :last-processed (person-representation @person)))
       (do (send-off *agent* process-applicant my-queue notice-board)
           psk-agent))
 
-    (ctl/info (format "[Agent: %s] Working hours are over! Closing Shop! Come back later!"
-                      (agent-representation psk-agent)))))
+    (mu/log ::process-applicant
+            :agent (agent-representation psk-agent)
+            :msg "Working hours are over! Closing Shop! Come back later!")))
 
 (defn- book-keeping-for-applicants
   "Remove all applicants who are completely done from
@@ -308,17 +322,19 @@
   *NOTE* : Since this goes through the entire collection, it is slow.
   Hence we run it when sending in new batches of people."
   [active-applicants done-applicants]
-  (ctl/debug "Removing completed applications for book-keeping!")
-  (dosync
-   (let [[active-people done-people] (reduce (fn [[aa da] p]
-                                               (if (and (= (:stage @p) ::exit)
-                                                        (= (:stage-status @p) ::done))
-                                                 [aa (conj da p)]
-                                                 [(conj aa p) da]))
-                                             [[] []]
-                                             @active-applicants)]
-     (ref-set active-applicants active-people)
-     (alter done-applicants into done-people))))
+  (mu/trace
+   ::book-keeping-for-applicants
+   [:msg "Removing completed applications for book-keeping!"]
+   (dosync
+    (let [[active-people done-people] (reduce (fn [[aa da] p]
+                                                (if (and (= (:stage @p) ::exit)
+                                                         (= (:stage-status @p) ::done))
+                                                  [aa (conj da p)]
+                                                  [(conj aa p) da]))
+                                              [[] []]
+                                              @active-applicants)]
+      (ref-set active-applicants active-people)
+      (alter done-applicants into done-people)))))
 
 (defn let-people-through
   "Send people into the PSK in batches as defined by
@@ -332,7 +348,9 @@
         (if (> (count @active-applicants)
                (- total-capacity processing-batch-size))
 
-          (do (ctl/info "[Entry] PSK at max capacity! We need to cancel this batch!")
+          (do (mu/log ::let-people-through
+                      :max-capacity true
+                      :batch-cancel true)
               (Thread/sleep (* 1000 new-batch-in-mins))
               (recur))
 
@@ -341,15 +359,17 @@
                                 (map ref))]
             (dosync
              (alter active-applicants into new-people))
-            (ctl/debug (format "[Entry] %s new people entered into the PSK."
-                               (count new-people)))
+            (mu/log ::let-people-through
+                    :debug true
+                    :new-people (count new-people))
 
             (book-keeping-for-applicants active-applicants done-applicants)
 
             (Thread/sleep (* 1000 new-batch-in-mins))
             (recur)))
 
-        (ctl/info "[Entry] Working hours are over! Closing Shop! Come back later!")))))
+        (mu/log ::let-people-through
+                :msg "Working hours are over! Closing Shop! Come back later!")))))
 
 (defn- mark-applicant-process-as-complete
   "Takes a `person` ref object and marks its processing as complete."
@@ -366,18 +386,20 @@
                             ct/in-seconds))
      (store-stage-change person ::exit ::done time-instant)))
 
-  (ctl/debug (format "Dear %s, Thank you for visiting the Passport Seva Kendra! Your entire experience took: %s mins!"
-                     (person-representation @person)
-                     (:total-time @person))))
+  (mu/log ::mark-applicant-process-as-complete
+          :debug true
+          :person (person-representation @person)
+          :total-time (:total-time @person)))
 
 (defn- move-applicant-to-next-stage
   "Given a `person` ref and the next stage they should go to, move
   them to the stage. Does a transactional update."
   [stage->queue next-stage person]
-  (ctl/debug (format "[Guide] %s from %s to %s"
-                     (person-representation @person)
-                     (:stage @person)
-                     next-stage))
+  (mu/log ::move-applicant-to-next-stage
+          :debug true
+          :person (person-representation @person)
+          :current-stage (:stage @person)
+          :next-stage next-stage)
   (dosync
    (alter person
           assoc
@@ -406,7 +428,8 @@
           (Thread/sleep guide-people-to-next-stage-ms)
           (recur))
 
-        (ctl/info "[Guide] Working hours are over! Closing Shop! Come back later!")))))
+        (mu/log ::move-people-through
+                :msg "Working hours are over! Closing Shop! Come back later!")))))
 
 (let [comp-score {:normal 1
                   :tatkal 2
@@ -525,7 +548,8 @@
         ;; Track all the completed applicants (for debugging /
         ;; historical data purpose)
         done-applicants (ref [])]
-    (ctl/info "[PSK] Welcome, today is a good day.")
+    (mu/log ::start-the-kendra!
+            :msg "[PSK] Welcome, today is a good day.")
     ;; For each agent at each counter, start processing!
     (doseq [a list-of-agents]
       ;; Get the stage this agent is working at, and the queue of

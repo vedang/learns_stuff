@@ -2,7 +2,7 @@
   (:require [clj-time.core :as ct]
             [clojure.java.io :as jio]
             [clojure.string :as cs]
-            [clojure.tools.logging :as ctl])
+            [com.brunobonacci.mulog :as mu])
   (:import java.io.File
            [org.joda.time.format DateTimeFormat DateTimeFormatter]
            org.jsoup.Jsoup
@@ -20,14 +20,16 @@
        ".org"))
 
 
-(defn- write-to-file
+(defn write-to-file
   [filename header-strs content-strs]
-  (ctl/info "Writing to " filename)
-  (with-open [^java.io.Writer fd (jio/writer filename)]
-    (doseq [s header-strs]
-      (.write fd s))
-    (doseq [s content-strs]
-      (.write fd s))))
+  (mu/trace
+   ::write-to-file
+   [:filename filename]
+   (with-open [^java.io.Writer fd (jio/writer filename)]
+     (doseq [s header-strs]
+       (.write fd s))
+     (doseq [s content-strs]
+       (.write fd s)))))
 
 
 (declare extract-content-from-elements)
@@ -208,8 +210,9 @@
       (extract-content-from-elements content-strs
                                      (.select div-element "> *")))
 
-    :else (do (ctl/info "Unknown div class with content: "
-                        (.html div-element))
+    :else (do (mu/log ::unknown-class
+                      :msg "Unknown div class!"
+                      :content (.html div-element))
               (reset! known-content? false)
               content-strs)))
 
@@ -258,9 +261,9 @@
     "blockquote" (process-blockquotes e acc)
     "table" (process-tables e acc)
     "img" (process-imgs e acc)
-    (do (ctl/info (format "Unknown element type: %s\nContent: %s"
-                         (.tagName e)
-                         (.text e)))
+    (do (mu/log ::unknown-element
+                :element-type (.tagName e)
+                :content (.text e))
         (reset! known-content? false)
         acc)))
 
@@ -299,14 +302,16 @@
 
 (defn scrape-single-post
   [post-url]
-  (ctl/info "\nScraping: " post-url)
-  (reset! known-content? true)
-  (let [post (.get (Jsoup/connect post-url))
-        post-filename (make-post-filename post-url)
-        post-header (extract-post-header post-url post)
-        post-content (extract-post-content post)]
-    (when @known-content?
-      (write-to-file post-filename post-header post-content))))
+  (mu/trace
+   ::scrape-single-post
+   [:url post-url]
+   (reset! known-content? true)
+   (let [post (.get (Jsoup/connect post-url))
+         post-filename (make-post-filename post-url)
+         post-header (extract-post-header post-url post)
+         post-content (extract-post-content post)]
+     (when @known-content?
+       (write-to-file post-filename post-header post-content)))))
 
 
 (defn- get-all-post-links
@@ -324,9 +329,10 @@
                                 (partition 2
                                            (interleave all-post-links
                                                        all-filenames)))]
-    (ctl/info (format "Discarding %s posts, since they're already scraped."
-                      (- (count all-filenames)
-                         (count new-links+files))))
+    (mu/log ::discard-scraped-posts
+            :msg (format "Discarding %s posts, since they're already scraped."
+                         (- (count all-filenames)
+                            (count new-links+files))))
     (map first new-links+files)))
 
 
@@ -358,13 +364,15 @@
                                        (catch java.io.FileNotFoundException _
                                          ;; MMM is linking to a post
                                          ;; he has deleted.
-                                         (ctl/info "Caught: Deleted Post / Missing local post: " ml)))
+                                         (mu/log ::replace-mustache-links-with-local-links-deleted-post
+                                                 :msg "Caught: Deleted Post / Missing local post: "
+                                                 :link ml)))
                       org-local-link (if local-title
                                        (str "*" local-title)
                                        ml)]
-                  (ctl/info (format "Converting %s to %s"
-                                    ml
-                                    org-local-link))
+                  (mu/log ::replace-mustache-links-with-local-links
+                          :mustache-link ml
+                          :local-link org-local-link)
                   (if (or (= org-local-link ml)
                           (re-find (re-pattern (str ml "#comment|comment"))
                                    acc))
@@ -411,8 +419,9 @@
            (.write writer "\n")))
        (catch java.io.FileNotFoundException e
          ;; thrown if we're trying to read a dir
-         (ctl/info "Caught: " post)
-         (ctl/info "Error: " e))))
+         (mu/log ::write-post-to-final-org-file-failure
+                 :post (.getName post)
+                 :error e))))
 
 
 (defn- get-post-published-date
@@ -442,5 +451,7 @@
       (.write w "\n#+TITLE: Mr. Money Mustache's Blog Posts")
       (.write w (str "\n#+CREATED_AT: " (ct/now) "\n"))
       (doseq [f sorted-post-files]
-        (ctl/info "Adding Post: " (.getName f))
-        (write-post-to-final-org-file w f)))))
+        (mu/trace
+         ::write-post-to-final-org-file
+         [:post (.getName f)]
+         (write-post-to-final-org-file w f))))))
