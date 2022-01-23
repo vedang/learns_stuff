@@ -20,7 +20,7 @@
        (filter :content)
        (filter (fn [el] (= "l_bJ" (get-in el [:attrs :class]))))
        last
-       ((comp (fn [i] (Integer/parseInt i)) first :content))
+       ((comp (fn [i] (if i (Integer/parseInt i) 0)) first :content))
        inc
        (range 2)))
 

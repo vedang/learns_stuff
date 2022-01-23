@@ -473,14 +473,14 @@
   [weak-n data]
   )
 
-(defn xmas-weakness-detector
-  "Given the weak number `weak-n`, and the `data`, return a contiguous
-  list of numbers whose sum is `weak-n`."
-  ;; idea: sum nums till sum exceeds weak-n, then drop initial numbs
-  ;; till sum falls under weak-n. At any point, if the sum is exactly
-  ;; the same, that list is the answer.
-  [data weak-n]
-  (let [[res sum contiguous-data] (sum-till-greater-than weak-n data)]
-    (case res
-      ::exact contiguous-data
-      ::exceeds (drop-till-less-than weak-n sum data))))
+;; (defn xmas-weakness-detector
+;;   "Given the weak number `weak-n`, and the `data`, return a contiguous
+;;   list of numbers whose sum is `weak-n`."
+;;   ;; idea: sum nums till sum exceeds weak-n, then drop initial numbs
+;;   ;; till sum falls under weak-n. At any point, if the sum is exactly
+;;   ;; the same, that list is the answer.
+;;   [data weak-n]
+;;   (let [[res sum contiguous-data] (sum-till-greater-than weak-n data)]
+;;     (case res
+;;       ::exact contiguous-data
+;;       ::exceeds (drop-till-less-than weak-n sum data))))
