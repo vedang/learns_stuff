@@ -27,91 +27,176 @@
 
 (defn win-sets
   "For the given `dimension`, return the list of winning positions (as
-sets for easy checking later)."
+  sets for easy checking later)."
   [dimension]
-  (let [dims (range dimension)
-        rev-dims (reverse dims)]
+  (let [ds (range dimension)
+        rev-dims (reverse ds)]
     (concat
      ;; horizontal winning positions
-     (map (fn [i]
-            (->> dims
-                (interleave (repeat i))
-                (partition 2)
-                (into #{})))
-          dims)
+     (map #(->> ds (interleave (repeat %)) (partition 2) (map vec) (into #{}))
+          ds)
      ;; vertical winning positions
-     (map (fn [j]
-            (->> (repeat j)
-                (interleave dims)
-                (partition 2)
-                (into #{})))
-          dims)
+     (map #(->> (repeat %) (interleave ds) (partition 2) (map vec) (into #{}))
+          ds)
      ;; the two diagonals
      (reduce (fn [[d1 d2] [i j]]
-               [(conj d1 (list i i))
-                (conj d2 (list i j))])
+               [(conj d1 [i i]) (conj d2 [i j])])
              [#{} #{}]
-             (partition 2 (interleave dims rev-dims))))))
+             (partition 2 (interleave ds rev-dims))))))
 
 (defn new-board
-  "Returns a new board structure for the given `dimension`."
+  "Returns a new board for the NxN `dimension`. This is an atom meant
+to be used in a `new-game`."
   [dimension]
-  {:dimension dimension
-   :win-sets (win-sets dimension)
-   :x #{}
-   :o #{}
-   :last-move-by nil})
+  (atom
+   {:dimension dimension
+    ;; These are the winning positions:
+    :win-sets (win-sets dimension)
+    ;; Player moves are tracked here:
+    :moves {}
+    ;; Anyone can start the game, post which this is tracked per move.
+    :last-move-by nil}))
 
 (defn new-player
-  "Returns a new player of type `playing-as`"
-  [playing-as]
-  {:id playing-as
-   :moves []})
+  "Returns a new player of type `playing-as` for `board`"
+  [board playing-as]
+  (swap! board assoc-in [:moves playing-as] #{}))
 
-(defn start-game
-  "Start a new game of tic-tac-toe on a NxN `dimension` board. Setup the
-board and player refs."
-  [dimension]
-  (let [board (ref (new-board dimension))
-        x (ref (new-player :x))
-        o (ref (new-player :o))]
-   [board x o]))
+(defn new-game
+  "Start a new game of tic-tac-toe on `board`. Setup the board and
+  players.
+
+  `board` should be an atom returned by `new-board`.
+  Starts a 2 player game with `x` and `o` symbols."
+  [board]
+  (new-player board :x)
+  (new-player board :o)
+  board)
+
+(defn make-move
+  "Make the move! All checks have been done previously.
+  Note: This is an internal function. You are probably looking for
+  `play-move`."
+  [board player-id move]
+  (swap! board update-in [:moves player-id] conj move)
+  (swap! board assoc :last-move-by player-id))
+
+(t/deftest make-move-tests
+  (let [b (new-game (new-board 3))]
+    (make-move b :x [0 0])
+    (t/is (= #{[0 0]} (get-in @b [:moves :x]))
+          "A move is registered against :x")
+    (t/is (= :x (:last-move-by @b))
+          ":x made the last move")
+    (make-move b :o [1 1])
+    (t/is (= #{[1 1]} (get-in @b [:moves :o]))
+          "A move is registered against :o")
+    (t/is (= :o (:last-move-by @b))
+          ":o made the last move")))
 
 (defn can-i-play?
-  "Return true if `player` can make the next move on `board`, false if
-we are still waiting for a move from someone else."
-  [board player]
+  "Return true if `player-id` can make the next move on `board`, false if
+  we are still waiting for a move from someone else."
+  [board player-id]
   (or (nil? (:last-move-by board))
-      (not= (:id player) (:last-move-by board))))
+      (not= player-id (:last-move-by board))))
+
+(t/deftest can-i-play-tests
+  (let [b (new-game (new-board 3))]
+    (t/is (can-i-play? @b :x)
+          "Anyone can start the game")
+    (make-move b :x [0 0])
+    (t/is (not (can-i-play? @b :x))
+          ":x has just made a move, it is now :o's turn")
+    (t/is (can-i-play? @b :o)
+          "Yes, It's :o's turn")))
 
 (defn occupied?
   "Return true if the given `move` on the `board` is already occupied."
   [board move]
-  (or (contains? (:x board) move)
-      (contains? (:o board) move)))
+  (contains? (apply cset/union (vals (:moves board))) move))
+
+(t/deftest occupied-tests
+  (let [b (new-game (new-board 3))]
+    (t/is (false? (occupied? @b [0 0]))
+          "New board is empty")
+    (make-move b :x [0 0])
+    (t/is (occupied? @b [0 0])
+          ":x has played this move, it's occupied")
+    (t/is (not (occupied? @b [2 2]))
+          "This spot is still empty")
+    (make-move b :o [2 2])
+    (t/is (occupied? @b [2 2])
+          "This spot is now occupied")))
 
 (defn on-board?
   "Return true if the input move is valid for this board."
   [board move]
   (every? #(< -1 % (:dimension board)) move))
 
-(defn make-move
-  "Make the move! All checks have been done previously."
-  [board player move]
-  (dosync
-   (alter board update (:id @player) conj move)
-   (alter player update :moves conj move)
-   (alter board assoc :last-move-by (:id @player))))
+(tcc/defspec on-board-tests
+  100
+  (prop/for-all
+   [dim (gen/fmap inc gen/nat)
+    mx gen/nat
+    my gen/nat]
+   (let [board (new-board dim)]
+     (cond
+       (>= mx dim) (false? (on-board? @board [mx my]))
+       (>= my dim) (false? (on-board? @board [mx my]))
+       :else (true? (on-board? @board [mx my]))))))
 
 (defn winning-position?
   "Return the player and the reason if this board is solved, else return nil."
   [board]
-  (let [x-wins-by (some (partial every? (:x board)) (:win-sets board))
-        o-wins-by (some (partial every? (:o board)) (:win-sets board))]
-    (cond
-      x-wins-by [:x x-wins-by]
-      o-wins-by [:o o-wins-by]
-      :else nil)))
+  (reduce-kv (fn [_a player mvs]
+               (if-let [ws (some #(when (empty? (cset/difference % mvs)) %)
+                                 (:win-sets board))]
+                 (reduced [player ws])
+                 nil))
+             nil
+             (:moves board)))
+
+(tcc/defspec winning-position-tests
+  100
+  (prop/for-all
+   ;; make sure 0, 1 is not generated for dim
+   [[dim row col] (gen/let [dim (gen/fmap #(+ 2 %) gen/nat)]
+                    [dim (rand-nth (range dim)) (rand-nth (range dim))])]
+   (let [board (new-game (new-board dim))
+         row-winner (map (fn [i] [row i]) (range dim))
+         col-winner (map (fn [i] [i col]) (range dim))]
+     (and (winning-position? (update-in @board [:moves :x] into row-winner))
+          (winning-position? (update-in @board [:moves :o] into col-winner))
+          ;; :o wins even if they've played more than the optimal
+          ;; number of moves
+          (winning-position? (update-in @board
+                                        [:moves :o]
+                                        into
+                                        (conj col-winner [row col])))
+          ;; :o does not win if they don't have a winning number of cells filled
+          (not (winning-position? (update-in @board
+                                             [:moves :o]
+                                             into
+                                             (list [row col]))))))))
+
+(defn all-moves
+  "For a given `dimension` of board, generate all the possible cell values."
+  [dimension]
+  (mapcat (fn [row] (map (fn [col] [row col]) (range dimension)))
+          (range dimension)))
+
+(defn draw-position?
+  "Return true if this board is a draw, with no victor."
+  [board]
+  (and (not (winning-position? board))
+       (every? (partial occupied? board) (all-moves (:dimension board)))))
+
+(defn complete?
+  "Return true if the game is complete and cannot be continued."
+  [board]
+  (or (winning-position? board)
+      (draw-position? board)))
 
 (defn display-board
   "Render the `board` for humans"
@@ -119,28 +204,37 @@ we are still waiting for a move from someone else."
   (println "Current Board Status: \n")
   (doseq [i (range (:dimension board))]
     (doseq [j (range (:dimension board))]
-      (cond
-        (contains? (:x board) [i j]) (print "| X |")
-        (contains? (:o board) [i j]) (print "| O |")
-        :else (print "| _ |")))
+      (when (reduce-kv (fn [_e? player-id moves]
+                         (if (contains? moves [i j])
+                           (do (print (format "| %s |" player-id))
+                               (reduced false))
+                           true))
+                       true
+                       (:moves board))
+        (print "| __ |")))
     (println)
-    (println (apply str (repeat (* 5 (:dimension board)) "-"))))
+    (println (apply str (repeat (* 6 (:dimension board)) "-"))))
   (println "\nLast Move was played by: " (:last-move-by board))
   (when-let [[p moves] (winning-position? board)]
     (println (format "\nPlayer %s has a *winning position*!: %s"
-                     p moves))))
+                     p moves)))
+  (when (draw-position? board)
+    (println "\nThis board is drawn! Fight another battle!")))
 
 (defn play-move
-  "Play the `move` on the `board`, for `player`.
+  "Play the `move` on the `board`, for `player-id`.
 
-  `player` and `board` should be refs returned by `start-game`. `move`
-  should be a [row, col] representation of a spot on the board."
+  `board` should be an atom as returned by `new-game`.
+  `move` should be a [row, col] representation of a spot on the board."
 
-  [board player move]
+  [board player-id move]
   (cond
-    (not (can-i-play? @board @player))
+    (complete? @board)
+    (println "This board is complete! Fight a new battle!")
+
+    (not (can-i-play? @board player-id))
     (println (format "%s can't play right now, waiting for the other player"
-                     (:id @player)))
+                     player-id))
 
     (not (on-board? @board move))
     (println (format "%s is not a valid position on board of dimensions %sX%s"
@@ -154,57 +248,18 @@ we are still waiting for a move from someone else."
 
     :else
     ;; all checks passed, make the move!
-    (dosync
-     (make-move board player (seq move))
-     (display-board @board))))
-
-
-;;; Tests!
-(t/deftest can-i-play-tests
-  (let [[b p1 p2] (start-game 3)]
-    (t/is (can-i-play? @b @p1)
-          "Anyone can start the game")
-    (make-move b p1 [0 0])
-    (t/is (not (can-i-play? @b @p1))
-          "p1 has just make a move, it is now p2s turn")
-    (t/is (can-i-play? @b @p2)
-          "It's p2s turn")))
-
-(tcc/defspec on-board-tests
-  100
-  (prop/for-all
-   [dim gen/nat
-    mx gen/nat
-    my gen/nat]
-   (let [board (new-board dim)]
-     (cond
-       (>= mx dim) (false? (on-board? board [mx my]))
-       (>= my dim) (false? (on-board? board [mx my]))
-       :else (true? (on-board? board [mx my]))))))
-
-(t/deftest occupied-tests
-  (let [[b p1 p2] (start-game 3)]
-    (t/is (false? (occupied? @b [0 0]))
-          "New board is empty")
-    (make-move b p1 [0 0])
-    (t/is (occupied? @b [0 0])
-          "p1 has played this move, it's occupied")
-    (t/is (not (occupied? @b [2 2]))
-          "This spot is still empty")
-    (make-move b p2 [2 2])
-    (t/is (occupied? @b [2 2])
-          "This spot is now occupied")))
+    (-> board
+        (make-move player-id move)
+        display-board)))
 
 ;;; How to play the game
 (comment
-  (let [[b x o] (start-game 3)]
-    (def b* b)
-    (def x* x)
-    (def o* o))
+  (let [b (new-game (new-board 3))]
+    (def b* b))
 
   (display-board @b*)
-  (play-move b* x* '(0 0))
-  (play-move b* o* '(2 2))
-  (play-move b* x* '(2 0))
-  (play-move b* o* '(1 1))
-  (play-move b* x* '(1 0)))
+  (play-move b* :x [0 0])
+  (play-move b* :o [2 2])
+  (play-move b* :x [2 0])
+  (play-move b* :o [1 1])
+  (play-move b* :x [1 0]))
